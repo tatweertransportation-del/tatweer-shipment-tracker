@@ -36,7 +36,9 @@ const TRANSLATIONS = {
     suggestionSuccess: "Your suggestion was sent successfully.",
     suggestionError: "Unable to send your suggestion.",
     developerWhatsapp: "Talk to the developer on WhatsApp",
-    updateTimeOnly: "Update time",
+    updateTimeOnly: "Updates daily at 2:00 PM",
+    exportExcel: "Export Excel",
+    exportReady: "Excel file downloaded successfully.",
     adminBadge: "Operations Control Center",
     trackingHome: "Tracking Page",
     secureLogin: "Secure Login",
@@ -134,7 +136,9 @@ const TRANSLATIONS = {
     suggestionSuccess: "تم إرسال اقتراحك بنجاح.",
     suggestionError: "تعذر إرسال الاقتراح.",
     developerWhatsapp: "التواصل مع المطور عبر واتساب",
-    updateTimeOnly: "وقت التحديث",
+    updateTimeOnly: "يتم التحديث يوميًا الساعة 2:00 ظهرًا",
+    exportExcel: "استخراج إكسل",
+    exportReady: "تم تنزيل ملف الإكسل بنجاح.",
     adminBadge: "مركز التحكم التشغيلي",
     trackingHome: "صفحة التتبع",
     secureLogin: "تسجيل دخول آمن",
@@ -575,7 +579,7 @@ function renderShipment(shipment) {
     currentLanguage === "ar" ? shipment.arabic_status : shipment.english_status;
   lastUpdateValue.textContent = formatDate(shipment.last_update_time);
   if (lastUpdateTimeValue) {
-    lastUpdateTimeValue.textContent = `${t("updateTimeOnly")}: ${formatTimeOnly(shipment.last_update_time)}`;
+    lastUpdateTimeValue.textContent = t("updateTimeOnly");
   }
   etaValue.textContent = formatDate(shipment.delivery_date);
   progressValue.textContent = `${shipment.progress}%`;
@@ -621,6 +625,44 @@ async function submitSuggestion(form) {
   });
 
   form.reset();
+}
+
+async function downloadExcelReport() {
+  const token = localStorage.getItem(storageKeys.token);
+  if (!token) {
+    throw new Error("Unauthorized");
+  }
+
+  const response = await fetch(
+    buildApiUrl(`/api/shipments/export.xls?lang=${encodeURIComponent(currentLanguage)}`),
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+
+  if (!response.ok) {
+    let message = "Unable to export Excel.";
+    try {
+      const data = await response.json();
+      message = data.error || message;
+    } catch (error) {
+      // Ignore parse failure and keep default message.
+    }
+    throw new Error(message);
+  }
+
+  const blob = await response.blob();
+  const downloadUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const dateStamp = new Date().toISOString().slice(0, 10);
+  link.href = downloadUrl;
+  link.download = `tatweer-shipments-${dateStamp}.xls`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(downloadUrl);
 }
 
 function setupTrackingPage() {
@@ -841,6 +883,15 @@ function setupAdminPage() {
   document.getElementById("logoutBtn")?.addEventListener("click", () => {
     localStorage.removeItem(storageKeys.token);
     setAdminView(false);
+  });
+
+  document.getElementById("exportExcelBtn")?.addEventListener("click", async () => {
+    try {
+      await downloadExcelReport();
+      notify(t("exportReady"));
+    } catch (error) {
+      notify(error.message || t("loadShipmentsError"));
+    }
   });
 
   document.getElementById("shipmentForm")?.addEventListener("submit", async (event) => {

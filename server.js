@@ -168,6 +168,158 @@ function withDerivedFields(shipment, req) {
   };
 }
 
+function escapeXml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function getExportLabels(language) {
+  if (language === "ar") {
+    return {
+      workbookName: "تقرير شحنات تطوير",
+      shipmentsSheet: "الشحنات",
+      updatesSheet: "التحديثات",
+      shipmentsHeaders: [
+        "رقم الشحنة",
+        "هاتف العميل",
+        "الحالة بالعربية",
+        "الحالة بالإنجليزية",
+        "آخر تحديث",
+        "موعد التسليم",
+        "اللغة المفضلة",
+        "نسبة التقدم"
+      ],
+      updatesHeaders: [
+        "رقم الشحنة",
+        "التاريخ",
+        "الحالة بالعربية",
+        "الحالة بالإنجليزية",
+        "الموقع",
+        "نسبة التقدم"
+      ]
+    };
+  }
+
+  return {
+    workbookName: "Tatweer Shipment Report",
+    shipmentsSheet: "Shipments",
+    updatesSheet: "Updates",
+    shipmentsHeaders: [
+      "Tracking Number",
+      "Customer Phone",
+      "Arabic Status",
+      "English Status",
+      "Last Update",
+      "Delivery Date",
+      "Preferred Language",
+      "Progress"
+    ],
+    updatesHeaders: [
+      "Tracking Number",
+      "Date",
+      "Arabic Status",
+      "English Status",
+      "Location",
+      "Progress"
+    ]
+  };
+}
+
+function buildSpreadsheetRow(cells, cellStyle = "data") {
+  const xmlCells = cells
+    .map((value) => {
+      const safeValue = value == null ? "" : value;
+      const dataType = typeof safeValue === "number" ? "Number" : "String";
+      return `<Cell ss:StyleID="${cellStyle}"><Data ss:Type="${dataType}">${escapeXml(safeValue)}</Data></Cell>`;
+    })
+    .join("");
+  return `<Row>${xmlCells}</Row>`;
+}
+
+function buildWorksheetXml(name, headers, rows) {
+  const headerRow = buildSpreadsheetRow(headers, "header");
+  const bodyRows = rows.map((row) => buildSpreadsheetRow(row)).join("");
+  return `
+    <Worksheet ss:Name="${escapeXml(name)}">
+      <Table>
+        ${headerRow}
+        ${bodyRows}
+      </Table>
+      <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+        <FreezePanes />
+        <FrozenNoSplit />
+        <SplitHorizontal>1</SplitHorizontal>
+        <TopRowBottomPane>1</TopRowBottomPane>
+        <ProtectObjects>False</ProtectObjects>
+        <ProtectScenarios>False</ProtectScenarios>
+      </WorksheetOptions>
+    </Worksheet>
+  `;
+}
+
+function buildShipmentsWorkbookXml(shipments, language) {
+  const labels = getExportLabels(language);
+  const shipmentRows = shipments.map((shipment) => [
+    shipment.tracking_number,
+    shipment.phone_number,
+    shipment.arabic_status,
+    shipment.english_status,
+    shipment.last_update_time,
+    shipment.delivery_date,
+    shipment.preferred_language,
+    computeProgress(shipment.history)
+  ]);
+
+  const updateRows = shipments.flatMap((shipment) =>
+    (shipment.history || []).map((update) => [
+      shipment.tracking_number,
+      update.timestamp,
+      update.arabic_status,
+      update.english_status,
+      update.location || "",
+      Number.isFinite(Number(update.progress)) ? Number(update.progress) : ""
+    ])
+  );
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+  <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
+    <Author>Tatweer Tracking System</Author>
+    <Company>Tatweer Truck Transport Company</Company>
+    <Title>${escapeXml(labels.workbookName)}</Title>
+  </DocumentProperties>
+  <Styles>
+    <Style ss:ID="Default" ss:Name="Normal">
+      <Alignment ss:Vertical="Center" ss:WrapText="1"/>
+      <Borders/>
+      <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#1F1F1F"/>
+      <Interior/>
+      <NumberFormat/>
+      <Protection/>
+    </Style>
+    <Style ss:ID="header">
+      <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
+      <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/>
+      <Interior ss:Color="#B97656" ss:Pattern="Solid"/>
+    </Style>
+    <Style ss:ID="data">
+      <Alignment ss:Vertical="Center" ss:WrapText="1"/>
+    </Style>
+  </Styles>
+  ${buildWorksheetXml(labels.shipmentsSheet, labels.shipmentsHeaders, shipmentRows)}
+  ${buildWorksheetXml(labels.updatesSheet, labels.updatesHeaders, updateRows)}
+</Workbook>`;
+}
+
 function readRequestBody(req) {
   return new Promise((resolve, reject) => {
     let raw = "";
@@ -310,6 +462,28 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       sendJson(res, 200, loadShipments().map((shipment) => withDerivedFields(shipment, req)));
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/api/shipments/export.xls") {
+      const session = getSessionFromRequest(req);
+      if (!session) {
+        sendJson(res, 401, { error: "Unauthorized" });
+        return;
+      }
+
+      const language = requestUrl.searchParams.get("lang") === "ar" ? "ar" : "en";
+      const shipments = loadShipments();
+      const workbookXml = buildShipmentsWorkbookXml(shipments, language);
+      const fileName = `tatweer-shipments-${new Date().toISOString().slice(0, 10)}.xls`;
+      const body = Buffer.from(workbookXml, "utf8");
+      res.writeHead(200, {
+        "Content-Type": "application/vnd.ms-excel; charset=utf-8",
+        "Content-Length": body.length,
+        "Content-Disposition": `attachment; filename="${fileName}"`,
+        "Cache-Control": "no-store"
+      });
+      res.end(body);
       return;
     }
 
