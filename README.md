@@ -43,20 +43,20 @@ node server.js
 
 ## Important Data Storage Note
 
-Shipment data is stored in the JSON file configured by `DATA_FILE_PATH`.
+Shipment data is now stored in a SQLite database file configured by `DATABASE_FILE_PATH`.
 
-The server now also maintains:
+The app also keeps:
 
-- automatic snapshot backups before each write
+- JSON source files only for one-time migration of old data
 - an append-only audit log at `AUDIT_LOG_FILE_PATH`
-- automatic restore from the latest backup if the main JSON file becomes unreadable
+- a persistent SQLite database that keeps shipments, updates, and suggestions together
 
 For local development:
 
 ```env
 DATA_FILE_PATH=./data/shipments.json
 SUGGESTIONS_FILE_PATH=./data/suggestions.json
-BACKUP_ROOT_PATH=./data/backups
+DATABASE_FILE_PATH=./data/tatweer-tracking.sqlite
 AUDIT_LOG_FILE_PATH=./data/audit-log.jsonl
 ```
 
@@ -65,7 +65,7 @@ For Render with a persistent disk attached:
 ```env
 DATA_FILE_PATH=/var/data/shipments.json
 SUGGESTIONS_FILE_PATH=/var/data/suggestions.json
-BACKUP_ROOT_PATH=/var/data/backups
+DATABASE_FILE_PATH=/var/data/tatweer-tracking.sqlite
 AUDIT_LOG_FILE_PATH=/var/data/audit-log.jsonl
 ```
 
@@ -82,7 +82,7 @@ Change these before production use.
 
 This repo includes `render.yaml` for quick deployment.
 
-The included Blueprint now mounts a persistent disk at `/var/data` and points all shipment, suggestion, backup, and audit files there.
+The included Blueprint now mounts a persistent disk at `/var/data` and points the SQLite database and audit log there.
 
 Important:
 
@@ -110,7 +110,7 @@ Set these Render backend environment variables:
 ```env
 DATA_FILE_PATH=/var/data/shipments.json
 SUGGESTIONS_FILE_PATH=/var/data/suggestions.json
-BACKUP_ROOT_PATH=/var/data/backups
+DATABASE_FILE_PATH=/var/data/tatweer-tracking.sqlite
 AUDIT_LOG_FILE_PATH=/var/data/audit-log.jsonl
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin123
