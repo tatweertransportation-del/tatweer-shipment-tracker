@@ -45,16 +45,28 @@ node server.js
 
 Shipment data is stored in the JSON file configured by `DATA_FILE_PATH`.
 
+The server now also maintains:
+
+- automatic snapshot backups before each write
+- an append-only audit log at `AUDIT_LOG_FILE_PATH`
+- automatic restore from the latest backup if the main JSON file becomes unreadable
+
 For local development:
 
 ```env
 DATA_FILE_PATH=./data/shipments.json
+SUGGESTIONS_FILE_PATH=./data/suggestions.json
+BACKUP_ROOT_PATH=./data/backups
+AUDIT_LOG_FILE_PATH=./data/audit-log.jsonl
 ```
 
 For Render with a persistent disk attached:
 
 ```env
 DATA_FILE_PATH=/var/data/shipments.json
+SUGGESTIONS_FILE_PATH=/var/data/suggestions.json
+BACKUP_ROOT_PATH=/var/data/backups
+AUDIT_LOG_FILE_PATH=/var/data/audit-log.jsonl
 ```
 
 Without a persistent disk, Render web services use an ephemeral filesystem, so shipment data can be lost after redeploys or restarts.
@@ -69,6 +81,14 @@ Change these before production use.
 ## Render Deployment
 
 This repo includes `render.yaml` for quick deployment.
+
+The included Blueprint now mounts a persistent disk at `/var/data` and points all shipment, suggestion, backup, and audit files there.
+
+Important:
+
+- Render persistent disks are available only on paid services, not Free
+- if you stay on Free, no local file-based system can fully guarantee that your shipment data survives redeploys
+- for the highest safety level, use the persistent disk or move later to a managed database
 
 ### Same Render service for frontend and backend
 
@@ -89,6 +109,9 @@ Set these Render backend environment variables:
 
 ```env
 DATA_FILE_PATH=/var/data/shipments.json
+SUGGESTIONS_FILE_PATH=/var/data/suggestions.json
+BACKUP_ROOT_PATH=/var/data/backups
+AUDIT_LOG_FILE_PATH=/var/data/audit-log.jsonl
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin123
 ADMIN_SESSION_SECRET=replace-with-a-strong-secret

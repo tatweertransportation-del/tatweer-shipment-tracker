@@ -12,6 +12,12 @@ const DATA_FILE = process.env.DATA_FILE_PATH
 const SUGGESTIONS_FILE = process.env.SUGGESTIONS_FILE_PATH
   ? path.resolve(process.env.SUGGESTIONS_FILE_PATH)
   : path.join(__dirname, "data", "suggestions.json");
+const BACKUP_ROOT = process.env.BACKUP_ROOT_PATH
+  ? path.resolve(process.env.BACKUP_ROOT_PATH)
+  : path.join(path.dirname(DATA_FILE), "backups");
+const AUDIT_LOG_FILE = process.env.AUDIT_LOG_FILE_PATH
+  ? path.resolve(process.env.AUDIT_LOG_FILE_PATH)
+  : path.join(path.dirname(DATA_FILE), "audit-log.jsonl");
 const TRACKING_BASE_URL = process.env.TRACKING_BASE_URL || "";
 const DEFAULT_COUNTRY_CODE = process.env.DEFAULT_COUNTRY_CODE || "20";
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
@@ -54,15 +60,107 @@ function ensureJsonFile(filePath, fallbackValue = "[]") {
   }
 }
 
-function readJsonFile(filePath) {
-  ensureJsonFile(filePath);
-  const raw = fs.readFileSync(filePath, "utf8");
-  return JSON.parse(raw || "[]");
+function ensureDir(dirPath) {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
 }
 
-function writeJsonFile(filePath, data) {
-  ensureJsonFile(filePath);
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
+function ensureDataInfrastructure() {
+  ensureJsonFile(DATA_FILE);
+  ensureJsonFile(SUGGESTIONS_FILE);
+  ensureDir(BACKUP_ROOT);
+  ensureDir(path.dirname(AUDIT_LOG_FILE));
+  if (!fs.existsSync(AUDIT_LOG_FILE)) {
+    fs.writeFileSync(AUDIT_LOG_FILE, "", "utf8");
+  }
+}
+
+function readJsonFile(filePath) {
+  ensureDataInfrastructure();
+
+  try {
+    const raw = fs.readFileSync(filePath, "utf8");
+    return JSON.parse(raw || "[]");
+  } catch (error) {
+    const restored = restoreLatestBackup(filePath);
+    if (restored) {
+      return restored;
+    }
+    throw error;
+  }
+}
+
+function buildBackupDirectory(filePath) {
+  const baseName = path.basename(filePath, path.extname(filePath));
+  return path.join(BACKUP_ROOT, baseName);
+}
+
+function createBackupSnapshot(filePath) {
+  ensureDataInfrastructure();
+  if (!fs.existsSync(filePath)) {
+    return;
+  }
+
+  const backupDir = buildBackupDirectory(filePath);
+  ensureDir(backupDir);
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const backupFile = path.join(backupDir, `${timestamp}.json`);
+  fs.copyFileSync(filePath, backupFile);
+}
+
+function atomicWriteJsonFile(filePath, data) {
+  ensureDataInfrastructure();
+  const dir = path.dirname(filePath);
+  ensureDir(dir);
+  const tempFile = path.join(
+    dir,
+    `${path.basename(filePath)}.${process.pid}.${Date.now()}.tmp`
+  );
+  fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), "utf8");
+  fs.renameSync(tempFile, filePath);
+}
+
+function restoreLatestBackup(filePath) {
+  const backupDir = buildBackupDirectory(filePath);
+  if (!fs.existsSync(backupDir)) {
+    return null;
+  }
+
+  const latestBackup = fs
+    .readdirSync(backupDir)
+    .filter((file) => file.endsWith(".json"))
+    .sort()
+    .pop();
+
+  if (!latestBackup) {
+    return null;
+  }
+
+  const backupPath = path.join(backupDir, latestBackup);
+  const raw = fs.readFileSync(backupPath, "utf8");
+  const parsed = JSON.parse(raw || "[]");
+  atomicWriteJsonFile(filePath, parsed);
+  return parsed;
+}
+
+function appendAuditLog(eventType, payload) {
+  ensureDataInfrastructure();
+  const entry = {
+    id: crypto.randomUUID(),
+    type: eventType,
+    timestamp: new Date().toISOString(),
+    payload
+  };
+  fs.appendFileSync(AUDIT_LOG_FILE, `${JSON.stringify(entry)}\n`, "utf8");
+}
+
+function writeJsonFile(filePath, data, auditInfo = null) {
+  createBackupSnapshot(filePath);
+  atomicWriteJsonFile(filePath, data);
+  if (auditInfo) {
+    appendAuditLog(auditInfo.type, auditInfo.payload);
+  }
 }
 
 function loadShipments() {
@@ -70,7 +168,12 @@ function loadShipments() {
 }
 
 function saveShipments(shipments) {
-  writeJsonFile(DATA_FILE, shipments);
+  writeJsonFile(DATA_FILE, shipments, {
+    type: "shipments.write",
+    payload: {
+      total: Array.isArray(shipments) ? shipments.length : 0
+    }
+  });
 }
 
 function loadSuggestions() {
@@ -78,7 +181,12 @@ function loadSuggestions() {
 }
 
 function saveSuggestions(suggestions) {
-  writeJsonFile(SUGGESTIONS_FILE, suggestions);
+  writeJsonFile(SUGGESTIONS_FILE, suggestions, {
+    type: "suggestions.write",
+    payload: {
+      total: Array.isArray(suggestions) ? suggestions.length : 0
+    }
+  });
 }
 
 function createSessionToken(username) {
@@ -517,6 +625,11 @@ const server = http.createServer(async (req, res) => {
 
       suggestions.unshift(suggestion);
       saveSuggestions(suggestions);
+      appendAuditLog("suggestion.created", {
+        suggestion_id: suggestion.id,
+        tracking_number: suggestion.tracking_number,
+        language: suggestion.language
+      });
       sendJson(res, 201, suggestion);
       return;
     }
@@ -525,18 +638,17 @@ const server = http.createServer(async (req, res) => {
       const trackingNumber = pathname.split("/").pop().toUpperCase();
       const requestedLanguage = requestUrl.searchParams.get("lang") === "en" ? "en" : "ar";
       const shipments = loadShipments();
-      const shipmentIndex = shipments.findIndex(
-        (item) => item.tracking_number.toUpperCase() === trackingNumber
-      );
+      const shipment = shipments.find((item) => item.tracking_number.toUpperCase() === trackingNumber);
 
-      if (shipmentIndex === -1) {
+      if (!shipment) {
         sendJson(res, 404, { error: "Shipment not found" });
         return;
       }
 
-      shipments[shipmentIndex].preferred_language = requestedLanguage;
-      saveShipments(shipments);
-      sendJson(res, 200, withDerivedFields(shipments[shipmentIndex], req));
+      sendJson(res, 200, withDerivedFields({
+        ...shipment,
+        preferred_language: requestedLanguage
+      }, req));
       return;
     }
 
@@ -601,6 +713,11 @@ const server = http.createServer(async (req, res) => {
 
       shipments.unshift(shipment);
       saveShipments(shipments);
+      appendAuditLog("shipment.created", {
+        tracking_number: shipment.tracking_number,
+        phone_number: shipment.phone_number,
+        preferred_language: shipment.preferred_language
+      });
       sendJson(res, 201, withDerivedFields(shipment, req));
       return;
     }
@@ -651,6 +768,13 @@ const server = http.createServer(async (req, res) => {
       });
 
       saveShipments(shipments);
+      appendAuditLog("shipment.updated", {
+        tracking_number: shipment.tracking_number,
+        arabic_status: shipment.arabic_status,
+        english_status: shipment.english_status,
+        location: location || "",
+        progress: Number.isFinite(Number(progress)) ? Number(progress) : computeProgress(shipment.history)
+      });
       sendJson(res, 200, {
         shipment: withDerivedFields(shipment, req),
         notification: null

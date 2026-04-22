@@ -2,12 +2,24 @@ services:
   - type: web
     name: tatweer-shipment-track
     env: node
-    plan: free
+    plan: starter
     buildCommand: "echo Render build complete"
     startCommand: "node server.js"
     autoDeploy: true
+    disk:
+      name: tatweer-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: PORT
         value: 3000
+      - key: DATA_FILE_PATH
+        value: /var/data/shipments.json
+      - key: SUGGESTIONS_FILE_PATH
+        value: /var/data/suggestions.json
+      - key: BACKUP_ROOT_PATH
+        value: /var/data/backups
+      - key: AUDIT_LOG_FILE_PATH
+        value: /var/data/audit-log.jsonl
       - key: WHATSAPP_PROVIDER
         value: mock
