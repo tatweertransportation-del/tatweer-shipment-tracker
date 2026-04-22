@@ -78,6 +78,7 @@
               <div class="metric-box">
                 <span class="metric-label" data-i18n="lastUpdate">Last Update</span>
                 <strong id="lastUpdateValue">--</strong>
+                <small class="metric-subtext" id="lastUpdateTimeValue">--</small>
               </div>
               <div class="metric-box">
                 <span class="metric-label" data-i18n="eta">Estimated Delivery</span>
@@ -131,6 +132,53 @@
                 <span>📦</span>
                 <span>✔</span>
               </div>
+            </article>
+
+            <article class="glass-card info-card">
+              <h4 data-i18n="suggestionsTitle">Suggestions and Feedback</h4>
+              <p data-i18n="suggestionsText">
+                Share any ideas that can improve the tracking experience. Your feedback goes directly to the admin dashboard for review.
+              </p>
+              <p class="suggestions-note" data-i18n="suggestionsPolicy">
+                We welcome your suggestions and feedback. Please keep your message respectful and constructive.
+              </p>
+              <form id="suggestionForm" class="stack-form compact-form">
+                <label>
+                  <span data-i18n="suggestionName">Your Name</span>
+                  <input type="text" id="suggestionNameInput" />
+                </label>
+                <label>
+                  <span data-i18n="suggestionPhone">Phone Number</span>
+                  <input type="text" id="suggestionPhoneInput" />
+                </label>
+                <label>
+                  <span data-i18n="suggestionTracking">Tracking Number (Optional)</span>
+                  <input type="text" id="suggestionTrackingInput" />
+                </label>
+                <label>
+                  <span data-i18n="suggestionMessage">Your Suggestion</span>
+                  <textarea
+                    id="suggestionMessageInput"
+                    rows="4"
+                    required
+                    data-i18n-placeholder="suggestionPlaceholder"
+                    placeholder="Write your suggestion, note, or improvement idea here."
+                  ></textarea>
+                </label>
+                <button class="primary-btn developer-btn" type="submit" data-i18n="submitSuggestion">
+                  Send Suggestion
+                </button>
+              </form>
+              <a
+                id="developerWhatsappLink"
+                class="ghost-outline-btn developer-link-btn"
+                href="https://wa.me/201070761515"
+                target="_blank"
+                rel="noopener"
+                data-i18n="developerWhatsapp"
+              >
+                Talk to the developer on WhatsApp
+              </a>
             </article>
           </aside>
         </section>

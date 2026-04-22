@@ -21,6 +21,22 @@ const TRANSLATIONS = {
     supportTitle: "Need help with your cargo?",
     supportText:
       "Our logistics team monitors every route, crossing, and handover point so you always know what happens next.",
+    suggestionsTitle: "Suggestions and Feedback",
+    suggestionsText:
+      "Share any ideas that can improve the tracking experience. Your feedback goes directly to the admin dashboard for review.",
+    suggestionsPolicy:
+      "We welcome your suggestions and feedback. Please keep your message respectful and constructive.",
+    suggestionName: "Your Name",
+    suggestionPhone: "Phone Number",
+    suggestionTracking: "Tracking Number (Optional)",
+    suggestionMessage: "Your Suggestion",
+    suggestionPlaceholder:
+      "Write your suggestion, note, or improvement idea here.",
+    submitSuggestion: "Send Suggestion",
+    suggestionSuccess: "Your suggestion was sent successfully.",
+    suggestionError: "Unable to send your suggestion.",
+    developerWhatsapp: "Talk to the developer on WhatsApp",
+    updateTimeOnly: "Update time",
     adminBadge: "Operations Control Center",
     trackingHome: "Tracking Page",
     secureLogin: "Secure Login",
@@ -67,8 +83,18 @@ const TRANSLATIONS = {
     shipmentNotFound: "Shipment not found.",
     historyEmpty: "No searches yet.",
     noTimeline: "Timeline will appear here after a shipment is found.",
-    notificationSent: "WhatsApp request processed.",
     whatsappOpened: "WhatsApp chat opened for the customer.",
+    noShipmentsToUpdate: "No active shipments to update",
+    noShipmentSelected: "There is no shipment available to update.",
+    suggestionsInbox: "Customer Suggestions",
+    suggestionsInboxSubtitle: "Messages submitted from the public tracking page",
+    suggestionsCount: "Suggestions",
+    noSuggestions: "No suggestions have been submitted yet.",
+    suggestionDate: "Date",
+    suggestionSender: "Sender",
+    suggestionDetails: "Details",
+    suggestionMessageColumn: "Suggestion",
+    anonymousSender: "Anonymous",
     themeLight: "☀",
     themeDark: "🌙"
   },
@@ -94,6 +120,21 @@ const TRANSLATIONS = {
     supportTitle: "هل تحتاج مساعدة في شحنتك؟",
     supportText:
       "فريقنا اللوجستي يراقب كل مسار ونقطة عبور وتسليم حتى تكون على اطلاع دائم بما يحدث.",
+    suggestionsTitle: "الاقتراحات والملاحظات",
+    suggestionsText:
+      "اكتب أي فكرة أو اقتراح يمكن أن يحسن تجربة التتبع، وسيظهر مباشرة داخل لوحة الإدارة للمراجعة.",
+    suggestionsPolicy:
+      "يسعدنا استقبال اقتراحاتكم وملاحظاتكم، ونرجو أن تكون الرسائل بلغة محترمة وبنّاءة.",
+    suggestionName: "الاسم",
+    suggestionPhone: "رقم الهاتف",
+    suggestionTracking: "رقم الشحنة (اختياري)",
+    suggestionMessage: "اقتراحك",
+    suggestionPlaceholder: "اكتب هنا اقتراحك أو ملاحظتك أو الفكرة التي تريد مشاركتها.",
+    submitSuggestion: "إرسال الاقتراح",
+    suggestionSuccess: "تم إرسال اقتراحك بنجاح.",
+    suggestionError: "تعذر إرسال الاقتراح.",
+    developerWhatsapp: "التواصل مع المطور عبر واتساب",
+    updateTimeOnly: "وقت التحديث",
     adminBadge: "مركز التحكم التشغيلي",
     trackingHome: "صفحة التتبع",
     secureLogin: "تسجيل دخول آمن",
@@ -140,8 +181,18 @@ const TRANSLATIONS = {
     shipmentNotFound: "لم يتم العثور على الشحنة.",
     historyEmpty: "لا يوجد سجل بحث بعد.",
     noTimeline: "سيظهر خط سير الشحنة هنا بعد العثور عليها.",
-    notificationSent: "تمت معالجة طلب واتساب.",
     whatsappOpened: "تم فتح محادثة واتساب للعميل.",
+    noShipmentsToUpdate: "لا توجد شحنات متاحة للتحديث",
+    noShipmentSelected: "لا توجد شحنة متاحة للتحديث.",
+    suggestionsInbox: "اقتراحات العملاء",
+    suggestionsInboxSubtitle: "الرسائل المرسلة من صفحة التتبع العامة",
+    suggestionsCount: "عدد الاقتراحات",
+    noSuggestions: "لا توجد اقتراحات مرسلة حتى الآن.",
+    suggestionDate: "التاريخ",
+    suggestionSender: "المرسل",
+    suggestionDetails: "البيانات",
+    suggestionMessageColumn: "الاقتراح",
+    anonymousSender: "مرسل بدون اسم",
     themeLight: "☀",
     themeDark: "🌙"
   }
@@ -181,6 +232,11 @@ const APP_CONFIG = window.APP_CONFIG || {};
 
 let currentLanguage = localStorage.getItem(storageKeys.language) || "en";
 let currentTheme = localStorage.getItem(storageKeys.theme) || "dark";
+let lastViewedShipment = null;
+let adminState = {
+  shipments: [],
+  suggestions: []
+};
 
 function normalizeBaseUrl(value) {
   return String(value || "").trim().replace(/\/+$/, "");
@@ -303,15 +359,14 @@ function setLanguage(language) {
   document.documentElement.lang = currentLanguage;
   document.documentElement.dir = currentLanguage === "ar" ? "rtl" : "ltr";
   document.body.dir = currentLanguage === "ar" ? "rtl" : "ltr";
+
   document.querySelectorAll("[data-i18n]").forEach((node) => {
-    const key = node.dataset.i18n;
-    node.textContent = t(key);
+    node.textContent = t(node.dataset.i18n);
   });
 
-  const trackingInput = document.getElementById("trackingInput");
-  if (trackingInput) {
-    trackingInput.placeholder = t("trackingInputPlaceholder");
-  }
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
+    node.placeholder = t(node.dataset.i18nPlaceholder);
+  });
 
   const languageToggle = document.getElementById("languageToggle");
   if (languageToggle) {
@@ -321,6 +376,17 @@ function setLanguage(language) {
   if (page === "tracking") {
     renderSearchHistory();
     syncSupportWhatsappLink(document.getElementById("trackingInput")?.value || "");
+    syncDeveloperWhatsappLink();
+    if (lastViewedShipment) {
+      renderShipment(lastViewedShipment);
+    }
+  }
+
+  if (page === "admin" && (adminState.shipments.length || adminState.suggestions.length)) {
+    renderShipmentOptions(adminState.shipments);
+    renderAnalytics(adminState.shipments, adminState.suggestions);
+    renderShipmentsTable(adminState.shipments);
+    renderSuggestionsTable(adminState.suggestions);
   }
 }
 
@@ -328,6 +394,7 @@ function setTheme(theme) {
   currentTheme = theme === "light" ? "light" : "dark";
   localStorage.setItem(storageKeys.theme, currentTheme);
   document.body.classList.toggle("light-mode", currentTheme === "light");
+
   const themeToggle = document.getElementById("themeToggle");
   if (themeToggle) {
     themeToggle.textContent = currentTheme === "light" ? t("themeDark") : t("themeLight");
@@ -346,6 +413,16 @@ function formatDate(dateString) {
   return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: dateString.includes("T") ? "short" : undefined
+  }).format(new Date(dateString));
+}
+
+function formatTimeOnly(dateString) {
+  if (!dateString) {
+    return "--";
+  }
+  const locale = currentLanguage === "ar" ? "ar-EG" : "en-US";
+  return new Intl.DateTimeFormat(locale, {
+    timeStyle: "short"
   }).format(new Date(dateString));
 }
 
@@ -372,6 +449,7 @@ function renderSearchHistory() {
   if (!container) {
     return;
   }
+
   const history = getSearchHistory();
   if (!history.length) {
     container.innerHTML = `<div class="empty-state">${t("historyEmpty")}</div>`;
@@ -409,6 +487,7 @@ async function api(path, options = {}) {
   if (!response.ok) {
     throw new Error(data.error || "Request failed");
   }
+
   return data;
 }
 
@@ -417,6 +496,7 @@ function renderTimeline(history = []) {
   if (!container) {
     return;
   }
+
   if (!history.length) {
     container.innerHTML = `<div class="empty-state">${t("noTimeline")}</div>`;
     return;
@@ -458,14 +538,29 @@ function syncSupportWhatsappLink(trackingNumber = "") {
   if (!whatsappLink) {
     return;
   }
-  const safeTrackingNumber = trackingNumber || (currentLanguage === "ar" ? "support" : "support");
-  whatsappLink.href = buildCustomerWhatsappLink(safeTrackingNumber);
+  whatsappLink.href = buildCustomerWhatsappLink(trackingNumber || "support");
+}
+
+function syncDeveloperWhatsappLink() {
+  const developerLink = document.getElementById("developerWhatsappLink");
+  if (!developerLink) {
+    return;
+  }
+
+  const developerPhone = APP_CONFIG.DEVELOPER_WHATSAPP_NUMBER || "01070761515";
+  const phone = normalizeWhatsappContactNumber(developerPhone);
+  const message =
+    currentLanguage === "ar"
+      ? "مرحبًا، لدي ملاحظة أو فكرة تخص نظام التتبع."
+      : "Hello, I have a note or idea about the tracking system.";
+  developerLink.href = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
 
 function renderShipment(shipment) {
   const headline = document.getElementById("trackingHeadline");
   const statusBadge = document.getElementById("statusBadge");
   const lastUpdateValue = document.getElementById("lastUpdateValue");
+  const lastUpdateTimeValue = document.getElementById("lastUpdateTimeValue");
   const etaValue = document.getElementById("etaValue");
   const progressValue = document.getElementById("progressValue");
   const progressFill = document.getElementById("progressFill");
@@ -479,10 +574,15 @@ function renderShipment(shipment) {
   statusBadge.textContent =
     currentLanguage === "ar" ? shipment.arabic_status : shipment.english_status;
   lastUpdateValue.textContent = formatDate(shipment.last_update_time);
+  if (lastUpdateTimeValue) {
+    lastUpdateTimeValue.textContent = `${t("updateTimeOnly")}: ${formatTimeOnly(shipment.last_update_time)}`;
+  }
   etaValue.textContent = formatDate(shipment.delivery_date);
   progressValue.textContent = `${shipment.progress}%`;
   progressFill.style.width = `${shipment.progress}%`;
-  whatsappLink.href = buildCustomerWhatsappLink(shipment.tracking_number);
+  if (whatsappLink) {
+    whatsappLink.href = buildCustomerWhatsappLink(shipment.tracking_number);
+  }
 
   renderTimeline(shipment.history || []);
 }
@@ -491,6 +591,7 @@ async function fetchShipment(trackingNumber) {
   const shipment = await api(
     `/api/shipments/${encodeURIComponent(trackingNumber.trim().toUpperCase())}?lang=${currentLanguage}`
   );
+  lastViewedShipment = shipment;
   saveSearchHistory(trackingNumber);
   renderShipment(shipment);
 }
@@ -499,15 +600,34 @@ function bindGlobalControls() {
   document.getElementById("languageToggle")?.addEventListener("click", () => {
     setLanguage(currentLanguage === "ar" ? "en" : "ar");
   });
+
   document.getElementById("themeToggle")?.addEventListener("click", () => {
     setTheme(currentTheme === "light" ? "dark" : "light");
   });
+}
+
+async function submitSuggestion(form) {
+  const payload = {
+    name: document.getElementById("suggestionNameInput")?.value || "",
+    phone_number: document.getElementById("suggestionPhoneInput")?.value || "",
+    tracking_number: document.getElementById("suggestionTrackingInput")?.value || "",
+    message: document.getElementById("suggestionMessageInput")?.value || "",
+    language: currentLanguage
+  };
+
+  await api("/api/suggestions", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+
+  form.reset();
 }
 
 function setupTrackingPage() {
   renderSearchHistory();
   renderTimeline([]);
   syncSupportWhatsappLink();
+  syncDeveloperWhatsappLink();
 
   document.getElementById("trackingForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -538,10 +658,24 @@ function setupTrackingPage() {
     renderSearchHistory();
   });
 
+  document.getElementById("suggestionForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      await submitSuggestion(event.target);
+      notify(t("suggestionSuccess"));
+    } catch (error) {
+      notify(`${t("suggestionError")} ${error.message}`);
+    }
+  });
+
   const params = new URLSearchParams(window.location.search);
   const trackingFromUrl = params.get("tracking");
   if (trackingFromUrl) {
     document.getElementById("trackingInput").value = trackingFromUrl;
+    const suggestionTrackingInput = document.getElementById("suggestionTrackingInput");
+    if (suggestionTrackingInput) {
+      suggestionTrackingInput.value = trackingFromUrl;
+    }
     fetchShipment(trackingFromUrl).catch(() => {
       notify(t("shipmentNotFound"));
     });
@@ -577,7 +711,7 @@ function renderShipmentOptions(shipments) {
   const activeShipments = shipments.filter((shipment) => !isCompletedShipment(shipment));
 
   if (!activeShipments.length) {
-    select.innerHTML = `<option value="">${currentLanguage === "ar" ? "لا توجد شحنات متاحة للتحديث" : "No active shipments to update"}</option>`;
+    select.innerHTML = `<option value="">${t("noShipmentsToUpdate")}</option>`;
     return;
   }
 
@@ -591,11 +725,16 @@ function renderShipmentOptions(shipments) {
     .join("");
 }
 
-function renderAnalytics(shipments) {
+function renderAnalytics(shipments, suggestions) {
   const delivered = shipments.filter((shipment) => shipment.progress >= 100).length;
+  const suggestionsCount = Array.isArray(suggestions) ? suggestions.length : 0;
   document.getElementById("analyticsTotal").textContent = shipments.length;
   document.getElementById("analyticsDelivered").textContent = delivered;
   document.getElementById("analyticsTransit").textContent = shipments.length - delivered;
+  const suggestionsNode = document.getElementById("analyticsSuggestions");
+  if (suggestionsNode) {
+    suggestionsNode.textContent = suggestionsCount;
+  }
 }
 
 function renderShipmentsTable(shipments) {
@@ -622,13 +761,61 @@ function renderShipmentsTable(shipments) {
     .join("");
 }
 
-async function loadAdminShipments() {
-  const shipments = (await api("/api/shipments")).sort((first, second) => {
+function renderSuggestionsTable(suggestions) {
+  const body = document.getElementById("suggestionsTableBody");
+  if (!body) {
+    return;
+  }
+
+  if (!suggestions.length) {
+    body.innerHTML = `
+      <tr>
+        <td colspan="4" class="empty-table">${t("noSuggestions")}</td>
+      </tr>
+    `;
+    return;
+  }
+
+  body.innerHTML = suggestions
+    .map((item) => {
+      const sender = item.name || t("anonymousSender");
+      const phone = item.phone_number ? `<div>${item.phone_number}</div>` : "";
+      const tracking = item.tracking_number ? `<div>${item.tracking_number}</div>` : "";
+      return `
+        <tr>
+          <td>${formatDate(item.created_at)}</td>
+          <td>${sender}${phone}</td>
+          <td>${tracking || "--"}</td>
+          <td>${item.message}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+async function loadAdminData() {
+  const [shipments, suggestions] = await Promise.all([
+    api("/api/shipments"),
+    api("/api/suggestions")
+  ]);
+
+  const sortedShipments = shipments.sort((first, second) => {
     return new Date(second.last_update_time).getTime() - new Date(first.last_update_time).getTime();
   });
-  renderShipmentOptions(shipments);
-  renderAnalytics(shipments);
-  renderShipmentsTable(shipments);
+
+  const sortedSuggestions = suggestions.sort((first, second) => {
+    return new Date(second.created_at).getTime() - new Date(first.created_at).getTime();
+  });
+
+  adminState = {
+    shipments: sortedShipments,
+    suggestions: sortedSuggestions
+  };
+
+  renderShipmentOptions(sortedShipments);
+  renderAnalytics(sortedShipments, sortedSuggestions);
+  renderShipmentsTable(sortedShipments);
+  renderSuggestionsTable(sortedSuggestions);
 }
 
 function setupAdminPage() {
@@ -644,7 +831,7 @@ function setupAdminPage() {
       });
       localStorage.setItem(storageKeys.token, data.token);
       setAdminView(true);
-      await loadAdminShipments();
+      await loadAdminData();
       notify(t("loginSuccess"));
     } catch (error) {
       notify(t("loginError"));
@@ -670,13 +857,13 @@ function setupAdminPage() {
           delivery_date: document.getElementById("deliveryDateInput").value
         })
       });
+
       event.target.reset();
       document.getElementById("preferredLanguageInput").value = "ar";
-      await loadAdminShipments();
-      const creationWhatsappMessage = createdShipment && openCustomerUpdateWhatsapp(createdShipment, "create")
-        ? ` ${t("whatsappOpened")}`
-        : "";
-      notify(`${t("addShipmentSuccess")}${creationWhatsappMessage}`);
+      await loadAdminData();
+
+      const opened = createdShipment && openCustomerUpdateWhatsapp(createdShipment, "create");
+      notify(`${t("addShipmentSuccess")}${opened ? ` ${t("whatsappOpened")}` : ""}`);
     } catch (error) {
       notify(`${t("addShipmentError")} ${error.message}`);
     }
@@ -696,10 +883,12 @@ function setupAdminPage() {
     event.preventDefault();
     const trackingNumber = document.getElementById("shipmentSelect").value;
     if (!trackingNumber) {
-      notify(currentLanguage === "ar" ? "لا توجد شحنة متاحة للتحديث." : "There is no shipment available to update.");
+      notify(t("noShipmentSelected"));
       return;
     }
+
     const sendWhatsapp = document.getElementById("sendWhatsappCheckbox").checked;
+
     try {
       const result = await api(`/api/shipments/${encodeURIComponent(trackingNumber)}`, {
         method: "PUT",
@@ -711,11 +900,11 @@ function setupAdminPage() {
           send_whatsapp: false
         })
       });
-      await loadAdminShipments();
-      const notificationMessage = sendWhatsapp && result.shipment && openCustomerUpdateWhatsapp(result.shipment, "update")
-        ? ` ${t("whatsappOpened")}`
-        : "";
-      notify(`${t("updateShipmentSuccess")}${notificationMessage}`);
+
+      await loadAdminData();
+      const opened =
+        sendWhatsapp && result.shipment && openCustomerUpdateWhatsapp(result.shipment, "update");
+      notify(`${t("updateShipmentSuccess")}${opened ? ` ${t("whatsappOpened")}` : ""}`);
     } catch (error) {
       notify(`${t("updateShipmentError")} ${error.message}`);
     }
@@ -725,7 +914,7 @@ function setupAdminPage() {
     setAdminView(loggedIn);
     if (loggedIn) {
       try {
-        await loadAdminShipments();
+        await loadAdminData();
       } catch (error) {
         notify(t("loadShipmentsError"));
       }

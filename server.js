@@ -9,6 +9,9 @@ const PORT = Number(process.env.PORT) || 3000;
 const DATA_FILE = process.env.DATA_FILE_PATH
   ? path.resolve(process.env.DATA_FILE_PATH)
   : path.join(__dirname, "data", "shipments.json");
+const SUGGESTIONS_FILE = process.env.SUGGESTIONS_FILE_PATH
+  ? path.resolve(process.env.SUGGESTIONS_FILE_PATH)
+  : path.join(__dirname, "data", "suggestions.json");
 const TRACKING_BASE_URL = process.env.TRACKING_BASE_URL || "";
 const DEFAULT_COUNTRY_CODE = process.env.DEFAULT_COUNTRY_CODE || "20";
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
@@ -20,16 +23,19 @@ function loadEnvFile(filePath) {
   if (!fs.existsSync(filePath)) {
     return;
   }
+
   const content = fs.readFileSync(filePath, "utf8");
   content.split(/\r?\n/).forEach((line) => {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) {
       return;
     }
+
     const separatorIndex = trimmed.indexOf("=");
     if (separatorIndex === -1) {
       return;
     }
+
     const key = trimmed.slice(0, separatorIndex).trim();
     const value = trimmed.slice(separatorIndex + 1).trim();
     if (!(key in process.env)) {
@@ -38,24 +44,41 @@ function loadEnvFile(filePath) {
   });
 }
 
-function ensureDataFile() {
-  const dir = path.dirname(DATA_FILE);
+function ensureJsonFile(filePath, fallbackValue = "[]") {
+  const dir = path.dirname(filePath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
-  if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(DATA_FILE, "[]", "utf8");
+  if (!fs.existsSync(filePath)) {
+    fs.writeFileSync(filePath, fallbackValue, "utf8");
   }
 }
 
-function loadShipments() {
-  ensureDataFile();
-  const raw = fs.readFileSync(DATA_FILE, "utf8");
+function readJsonFile(filePath) {
+  ensureJsonFile(filePath);
+  const raw = fs.readFileSync(filePath, "utf8");
   return JSON.parse(raw || "[]");
 }
 
+function writeJsonFile(filePath, data) {
+  ensureJsonFile(filePath);
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
+}
+
+function loadShipments() {
+  return readJsonFile(DATA_FILE);
+}
+
 function saveShipments(shipments) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(shipments, null, 2), "utf8");
+  writeJsonFile(DATA_FILE, shipments);
+}
+
+function loadSuggestions() {
+  return readJsonFile(SUGGESTIONS_FILE);
+}
+
+function saveSuggestions(suggestions) {
+  writeJsonFile(SUGGESTIONS_FILE, suggestions);
 }
 
 function createSessionToken(username) {
@@ -97,34 +120,21 @@ function verifySessionToken(token) {
   }
 }
 
-function requireAuth(req, res, next) {
-  const authHeader = req.headers.authorization || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  const session = verifySessionToken(token);
-  if (!session) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-  req.session = session;
-  next();
-}
-
 function normalizePhoneNumber(phoneNumber) {
   if (!phoneNumber) {
     return "";
   }
+
   const cleaned = String(phoneNumber).replace(/[^\d]/g, "");
   if (!cleaned) {
     return "";
   }
+
   if (cleaned.startsWith("0")) {
     return `${DEFAULT_COUNTRY_CODE}${cleaned.slice(1)}`;
   }
-  return cleaned;
-}
 
-function formatWhatsAppPhone(phoneNumber) {
-  const normalized = normalizePhoneNumber(phoneNumber);
-  return normalized ? `whatsapp:+${normalized}` : "";
+  return cleaned;
 }
 
 function deriveRequestOrigin(req) {
@@ -141,104 +151,6 @@ function getPublicBaseUrl(req) {
 function buildTrackingLink(trackingNumber, req) {
   const encoded = encodeURIComponent(trackingNumber);
   return `${getPublicBaseUrl(req)}/index.html?tracking=${encoded}`;
-}
-
-function buildWhatsAppMessage(shipment, language, req) {
-  const trackingLink = buildTrackingLink(shipment.tracking_number, req);
-  if (language === "en") {
-    return `🚚 New shipment update
-Tracking Number: ${shipment.tracking_number}
-Status: ${shipment.english_status}
-Track here:
-${trackingLink}`;
-  }
-
-  return `🚚 تحديث جديد على شحنتك
-رقم الشحنة: ${shipment.tracking_number}
-الحالة: ${shipment.arabic_status}
-تابع الشحنة:
-${trackingLink}`;
-}
-
-async function sendViaTwilio(shipment, language, req) {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_WHATSAPP_FROM;
-  const to = formatWhatsAppPhone(shipment.phone_number);
-
-  if (!accountSid || !authToken || !from || !to) {
-    throw new Error("Twilio WhatsApp configuration is incomplete.");
-  }
-
-  const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString("base64")}`,
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: new URLSearchParams({
-      From: from,
-      To: to,
-      Body: buildWhatsAppMessage(shipment, language, req)
-    })
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Twilio request failed: ${errorText}`);
-  }
-
-  return response.json();
-}
-
-async function sendViaWati(shipment, language, req) {
-  const instanceId = process.env.WATI_INSTANCE_ID;
-  const accessToken = process.env.WATI_ACCESS_TOKEN;
-  const phone = normalizePhoneNumber(shipment.phone_number);
-
-  if (!instanceId || !accessToken || !phone) {
-    throw new Error("WATI configuration is incomplete.");
-  }
-
-  const response = await fetch(
-    `https://live-server-${instanceId}.wati.io/api/v1/sendSessionMessage/${phone}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        messageText: buildWhatsAppMessage(shipment, language, req)
-      })
-    }
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`WATI request failed: ${errorText}`);
-  }
-
-  return response.json();
-}
-
-async function sendWhatsAppUpdate(shipment, req) {
-  const language = shipment.preferred_language === "en" ? "en" : "ar";
-  const provider = (process.env.WHATSAPP_PROVIDER || "mock").toLowerCase();
-
-  if (provider === "twilio") {
-    return sendViaTwilio(shipment, language, req);
-  }
-
-  if (provider === "wati") {
-    return sendViaWati(shipment, language, req);
-  }
-
-  return {
-    provider: "mock",
-    sent: false,
-    preview: buildWhatsAppMessage(shipment, language, req)
-  };
 }
 
 function computeProgress(history = []) {
@@ -259,23 +171,27 @@ function withDerivedFields(shipment, req) {
 function readRequestBody(req) {
   return new Promise((resolve, reject) => {
     let raw = "";
+
     req.on("data", (chunk) => {
       raw += chunk;
       if (raw.length > 1e6) {
         reject(new Error("Payload too large"));
       }
     });
+
     req.on("end", () => {
       if (!raw) {
         resolve({});
         return;
       }
+
       try {
         resolve(JSON.parse(raw));
       } catch (error) {
         reject(new Error("Invalid JSON payload"));
       }
     });
+
     req.on("error", reject);
   });
 }
@@ -343,6 +259,7 @@ function serveStaticAsset(res, filePath) {
     ".jpeg": "image/jpeg",
     ".ico": "image/x-icon"
   };
+
   sendText(res, 200, fs.readFileSync(absolutePath), contentTypes[extension] || "application/octet-stream");
 }
 
@@ -393,6 +310,40 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       sendJson(res, 200, loadShipments().map((shipment) => withDerivedFields(shipment, req)));
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/api/suggestions") {
+      const session = getSessionFromRequest(req);
+      if (!session) {
+        sendJson(res, 401, { error: "Unauthorized" });
+        return;
+      }
+      sendJson(res, 200, loadSuggestions());
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/suggestions") {
+      const { name, phone_number, tracking_number, message, language } = await readRequestBody(req);
+      if (!String(message || "").trim()) {
+        sendJson(res, 400, { error: "Suggestion message is required" });
+        return;
+      }
+
+      const suggestions = loadSuggestions();
+      const suggestion = {
+        id: crypto.randomUUID(),
+        name: String(name || "").trim(),
+        phone_number: normalizePhoneNumber(phone_number),
+        tracking_number: String(tracking_number || "").trim().toUpperCase(),
+        message: String(message || "").trim(),
+        language: language === "en" ? "en" : "ar",
+        created_at: new Date().toISOString()
+      };
+
+      suggestions.unshift(suggestion);
+      saveSuggestions(suggestions);
+      sendJson(res, 201, suggestion);
       return;
     }
 
@@ -495,7 +446,6 @@ const server = http.createServer(async (req, res) => {
         phone_number,
         progress,
         location,
-        send_whatsapp,
         preferred_language
       } = await readRequestBody(req);
 
@@ -526,19 +476,10 @@ const server = http.createServer(async (req, res) => {
         progress: Number.isFinite(Number(progress)) ? Number(progress) : computeProgress(shipment.history)
       });
 
-      let notification = null;
-      if (send_whatsapp) {
-        try {
-          notification = await sendWhatsAppUpdate(shipment, req);
-        } catch (error) {
-          notification = { error: error.message };
-        }
-      }
-
       saveShipments(shipments);
       sendJson(res, 200, {
         shipment: withDerivedFields(shipment, req),
-        notification
+        notification: null
       });
       return;
     }
@@ -548,10 +489,12 @@ const server = http.createServer(async (req, res) => {
         serveStaticAsset(res, "index.html");
         return;
       }
+
       if (pathname === "/admin" || pathname === "/admin.html") {
         serveStaticAsset(res, "admin.html");
         return;
       }
+
       serveStaticAsset(res, pathname.slice(1));
       return;
     }

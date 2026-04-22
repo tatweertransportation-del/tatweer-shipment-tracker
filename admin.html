@@ -66,6 +66,10 @@
               <span class="metric-label" data-i18n="inTransitCount">In Transit</span>
               <strong id="analyticsTransit">0</strong>
             </article>
+            <article class="glass-card analytics-card">
+              <span class="metric-label" data-i18n="suggestionsCount">Suggestions</span>
+              <strong id="analyticsSuggestions">0</strong>
+            </article>
             <article class="glass-card analytics-card logout-card">
               <button class="danger-btn" id="logoutBtn" type="button" data-i18n="logout">Logout</button>
             </article>
@@ -180,6 +184,28 @@
                   </tr>
                 </thead>
                 <tbody id="shipmentsTableBody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="glass-card shipments-table-card">
+            <div class="section-title-row">
+              <div>
+                <p class="card-label" data-i18n="suggestionsInbox">Customer Suggestions</p>
+                <h2 data-i18n="suggestionsInboxSubtitle">Messages submitted from the public tracking page</h2>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th data-i18n="suggestionDate">Date</th>
+                    <th data-i18n="suggestionSender">Sender</th>
+                    <th data-i18n="suggestionDetails">Details</th>
+                    <th data-i18n="suggestionMessageColumn">Suggestion</th>
+                  </tr>
+                </thead>
+                <tbody id="suggestionsTableBody"></tbody>
               </table>
             </div>
           </section>
