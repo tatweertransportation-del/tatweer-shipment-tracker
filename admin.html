@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tatweer Tracking System Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body data-page="admin">
+    <div class="page-shell">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <img class="brand-logo" src="assets/tatweer-logo.svg" alt="Tatweer logo" />
+          <div class="brand-copy">
+            <p class="eyebrow" data-i18n="adminBadge">Operations Control Center</p>
+            <h1 class="brand">Tatweer Tracking System Admin</h1>
+            <p class="brand-subtitle">Truck Transport Company</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button class="ghost-btn" id="themeToggle" type="button">🌙</button>
+          <button class="ghost-btn" id="languageToggle" type="button">AR</button>
+          <a class="ghost-btn" href="/index.html" data-i18n="trackingHome">Tracking Page</a>
+        </div>
+      </header>
+
+      <main class="admin-layout">
+        <section class="glass-card login-card" id="loginSection">
+          <div class="section-title-row">
+            <div>
+              <p class="card-label" data-i18n="secureLogin">Secure Login</p>
+              <h2 data-i18n="adminLoginTitle">Administrator Sign In</h2>
+            </div>
+          </div>
+
+          <form id="loginForm" class="stack-form">
+            <label>
+              <span data-i18n="username">Username</span>
+              <input type="text" id="usernameInput" required />
+            </label>
+            <label>
+              <span data-i18n="password">Password</span>
+              <input type="password" id="passwordInput" required />
+            </label>
+            <button class="primary-btn" type="submit" data-i18n="loginButton">Login</button>
+          </form>
+        </section>
+
+        <section class="dashboard-shell hidden" id="dashboardSection">
+          <div class="analytics-grid">
+            <article class="glass-card analytics-card">
+              <span class="metric-label" data-i18n="totalShipments">Total Shipments</span>
+              <strong id="analyticsTotal">0</strong>
+            </article>
+            <article class="glass-card analytics-card">
+              <span class="metric-label" data-i18n="deliveredCount">Delivered</span>
+              <strong id="analyticsDelivered">0</strong>
+            </article>
+            <article class="glass-card analytics-card">
+              <span class="metric-label" data-i18n="inTransitCount">In Transit</span>
+              <strong id="analyticsTransit">0</strong>
+            </article>
+            <article class="glass-card analytics-card logout-card">
+              <button class="danger-btn" id="logoutBtn" type="button" data-i18n="logout">Logout</button>
+            </article>
+          </div>
+
+          <div class="admin-grid">
+            <article class="glass-card admin-form-card">
+              <div class="section-title-row">
+                <div>
+                  <p class="card-label" data-i18n="shipmentManagement">Shipment Management</p>
+                  <h2 data-i18n="createShipment">Add New Shipment</h2>
+                </div>
+              </div>
+
+              <form id="shipmentForm" class="stack-form">
+                <label>
+                  <span data-i18n="trackingNumber">Tracking Number</span>
+                  <input type="text" id="trackingNumberInput" required />
+                </label>
+                <label>
+                  <span data-i18n="customerPhone">Customer Phone Number</span>
+                  <input type="text" id="customerPhoneInput" required />
+                </label>
+                <label>
+                  <span data-i18n="arabicStatus">Arabic Status</span>
+                  <input type="text" id="arabicStatusInput" required />
+                </label>
+                <label>
+                  <span data-i18n="englishStatus">English Status</span>
+                  <input type="text" id="englishStatusInput" required />
+                </label>
+                <label>
+                  <span data-i18n="preferredLanguage">Preferred Language</span>
+                  <select id="preferredLanguageInput">
+                    <option value="ar">Arabic</option>
+                    <option value="en">English</option>
+                  </select>
+                </label>
+                <label>
+                  <span data-i18n="deliveryDate">Estimated Delivery Date</span>
+                  <input type="date" id="deliveryDateInput" required />
+                </label>
+                <button class="primary-btn" type="submit" data-i18n="addShipment">Add Shipment</button>
+              </form>
+            </article>
+
+            <article class="glass-card update-card">
+              <div class="section-title-row">
+                <div>
+                  <p class="card-label" data-i18n="statusUpdates">Status Updates</p>
+                  <h2 data-i18n="updateShipment">Update Shipment Status</h2>
+                </div>
+              </div>
+
+              <form id="updateForm" class="stack-form">
+                <label>
+                  <span data-i18n="selectShipment">Select Shipment</span>
+                  <select id="shipmentSelect" required></select>
+                </label>
+                <label>
+                  <span data-i18n="predefinedStatus">Predefined Status</span>
+                  <select id="predefinedStatusSelect">
+                    <option value="">--</option>
+                    <option value="safaga">وصلت ميناء سفاجا | Arrived at Safaga Port</option>
+                    <option value="duba">وصلت ميناء ضباء | Arrived at Duba Port</option>
+                    <option value="hail">داخل حائل - السعودية | In Hail, Saudi Arabia</option>
+                    <option value="delivered">تم التسليم | Delivered</option>
+                  </select>
+                </label>
+                <label>
+                  <span data-i18n="customArabicStatus">Custom Arabic Status</span>
+                  <input type="text" id="updateArabicStatusInput" required />
+                </label>
+                <label>
+                  <span data-i18n="customEnglishStatus">Custom English Status</span>
+                  <input type="text" id="updateEnglishStatusInput" required />
+                </label>
+                <label>
+                  <span data-i18n="shipmentLocation">Location</span>
+                  <input type="text" id="locationInput" />
+                </label>
+                <label>
+                  <span data-i18n="progressPercent">Progress %</span>
+                  <input type="number" id="progressInput" min="0" max="100" value="75" />
+                </label>
+                <label class="checkbox-row">
+                  <input type="checkbox" id="sendWhatsappCheckbox" />
+                  <span data-i18n="sendWhatsapp">Send WhatsApp Notification</span>
+                </label>
+                <button class="primary-btn" type="submit" data-i18n="saveUpdate">Save Update</button>
+              </form>
+            </article>
+          </div>
+
+          <section class="glass-card shipments-table-card">
+            <div class="section-title-row">
+              <div>
+                <p class="card-label" data-i18n="allShipments">All Shipments</p>
+                <h2 data-i18n="liveShipmentList">Live Shipment List</h2>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th data-i18n="trackingNumber">Tracking Number</th>
+                    <th data-i18n="customerPhone">Customer Phone</th>
+                    <th data-i18n="currentStatus">Current Status</th>
+                    <th data-i18n="deliveryDate">Delivery Date</th>
+                    <th data-i18n="lastUpdate">Last Update</th>
+                    <th data-i18n="progressHeader">Progress</th>
+                  </tr>
+                </thead>
+                <tbody id="shipmentsTableBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

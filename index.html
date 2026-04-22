@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tatweer Tracking System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body data-page="tracking">
+    <div class="page-shell">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <img class="brand-logo" src="assets/tatweer-logo.svg" alt="Tatweer logo" />
+          <div class="brand-copy">
+            <p class="eyebrow" data-i18n="brandTag">Global Freight Visibility</p>
+            <h1 class="brand">Tatweer Tracking System</h1>
+            <p class="brand-subtitle">Truck Transport Company</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button class="ghost-btn" id="themeToggle" type="button">🌙</button>
+          <button class="ghost-btn" id="languageToggle" type="button">AR</button>
+          <a class="ghost-btn" href="/admin.html" data-i18n="adminLink">Admin</a>
+        </div>
+      </header>
+
+      <main class="tracking-layout">
+        <section class="hero-card glass-card">
+          <div class="hero-copy">
+            <span class="pill" data-i18n="heroBadge">Live Shipment Intelligence</span>
+            <h2 data-i18n="heroTitle">Track Every Milestone with Confidence</h2>
+            <p data-i18n="heroText">
+              Follow your shipment in real time, check the latest port and transit updates,
+              and contact support instantly through WhatsApp.
+            </p>
+          </div>
+
+          <form id="trackingForm" class="tracking-form">
+            <label for="trackingInput" class="sr-only" data-i18n="trackingLabel">Enter Tracking Number</label>
+            <div class="input-row">
+              <input
+                id="trackingInput"
+                name="tracking"
+                type="text"
+                autocomplete="off"
+                placeholder="Enter Tracking Number"
+                required
+              />
+              <button class="primary-btn" type="submit" data-i18n="trackButton">Track Shipment</button>
+            </div>
+          </form>
+
+          <div class="status-chips">
+            <span>⚓ Arrived at Safaga Port</span>
+            <span>📦 Arrived at Duba Port</span>
+            <span>🚚 In Hail, Saudi Arabia</span>
+            <span>✔ Delivery in progress</span>
+          </div>
+        </section>
+
+        <section class="content-grid">
+          <article class="results-card glass-card" id="resultsCard">
+            <div class="card-head">
+              <div>
+                <p class="card-label" data-i18n="currentShipment">Current Shipment</p>
+                <h3 id="trackingHeadline" data-i18n="searchPrompt">Enter a tracking number to begin.</h3>
+              </div>
+              <span class="status-badge" id="statusBadge">--</span>
+            </div>
+
+            <div class="metrics-grid">
+              <div class="metric-box">
+                <span class="metric-label" data-i18n="lastUpdate">Last Update</span>
+                <strong id="lastUpdateValue">--</strong>
+              </div>
+              <div class="metric-box">
+                <span class="metric-label" data-i18n="eta">Estimated Delivery</span>
+                <strong id="etaValue">--</strong>
+              </div>
+            </div>
+
+            <div class="progress-block">
+              <div class="progress-label-row">
+                <span data-i18n="deliveryProgress">Delivery Progress</span>
+                <strong id="progressValue">0%</strong>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill" id="progressFill"></div>
+              </div>
+            </div>
+
+            <div class="timeline-wrap">
+              <div class="section-title-row">
+                <h4 data-i18n="timeline">Shipment Timeline</h4>
+                <span class="mini-note" data-i18n="latestMilestones">Latest milestones</span>
+              </div>
+              <div class="timeline" id="timelineContainer"></div>
+            </div>
+
+            <div class="cta-row">
+              <a id="whatsappLink" class="whatsapp-btn" href="#" target="_blank" rel="noopener" data-i18n="contactWhatsapp">
+                Contact via WhatsApp
+              </a>
+            </div>
+          </article>
+
+          <aside class="side-panel">
+            <article class="glass-card search-history-card">
+              <div class="section-title-row">
+                <h4 data-i18n="searchHistory">Search History</h4>
+                <button class="text-btn" id="clearHistoryBtn" type="button" data-i18n="clearHistory">Clear</button>
+              </div>
+              <div id="searchHistoryList" class="history-list"></div>
+            </article>
+
+            <article class="glass-card info-card">
+              <h4 data-i18n="supportTitle">Need help with your cargo?</h4>
+              <p data-i18n="supportText">
+                Our logistics team monitors every route, crossing, and handover point so you
+                always know what happens next.
+              </p>
+              <div class="icon-row">
+                <span>🚚</span>
+                <span>⚓</span>
+                <span>📦</span>
+                <span>✔</span>
+              </div>
+            </article>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

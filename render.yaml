@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: tatweer-shipment-track
+    env: node
+    plan: free
+    buildCommand: "echo Render build complete"
+    startCommand: "node server.js"
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: WHATSAPP_PROVIDER
+        value: mock

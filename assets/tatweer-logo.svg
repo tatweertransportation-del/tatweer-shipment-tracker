@@ -1,0 +1,24 @@
+<svg width="720" height="220" viewBox="0 0 720 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="copper" x1="90" y1="26" x2="626" y2="178" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F3C3AA"/>
+      <stop offset="0.5" stop-color="#D99A7A"/>
+      <stop offset="1" stop-color="#9F624A"/>
+    </linearGradient>
+    <filter id="softShadow" x="0" y="0" width="720" height="220" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#140E0C" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#softShadow)">
+    <path d="M38 72L384 14V64L38 72Z" fill="url(#copper)"/>
+    <path d="M384 14L614 60L384 64V14Z" fill="url(#copper)"/>
+    <path d="M402 18L418 20V86H402V18Z" fill="url(#copper)"/>
+    <path d="M430 24L444 28V80H430V24Z" fill="url(#copper)"/>
+    <path d="M518 42L530 44V88H518V42Z" fill="url(#copper)"/>
+    <path d="M98 92H194L186 110H98V92Z" fill="url(#copper)" opacity="0.9"/>
+
+    <text x="56" y="168" fill="url(#copper)" font-size="90" font-family="Georgia, 'Times New Roman', serif" font-weight="700" letter-spacing="4">TATWEER</text>
+    <text x="70" y="205" fill="url(#copper)" font-size="28" font-family="Verdana, Arial, sans-serif" font-weight="600" letter-spacing="5">TRUCK TRANSPORT COMPANY</text>
+  </g>
+</svg>
