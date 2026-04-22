@@ -206,29 +206,88 @@ function normalizeWhatsappContactNumber(phoneNumber) {
   return cleaned;
 }
 
-function buildAdminShipmentUpdateMessage(shipment) {
-  if ((shipment.preferred_language || "ar") === "en") {
-    return `🚚 New shipment update
-Tracking Number: ${shipment.tracking_number}
-Status: ${shipment.english_status}
-Track here:
-${shipment.tracking_link}`;
-  }
-
-  return `🚚 تحديث جديد على شحنتك
-رقم الشحنة: ${shipment.tracking_number}
-الحالة: ${shipment.arabic_status}
-تابع الشحنة:
-${shipment.tracking_link}`;
+function getLatestShipmentLocation(shipment) {
+  const history = Array.isArray(shipment.history) ? shipment.history : [];
+  const lastEntry = history.length ? history[history.length - 1] : null;
+  return String(lastEntry?.location || "").trim();
 }
 
-function openCustomerUpdateWhatsapp(shipment) {
+function buildAdminShipmentMessage(shipment, messageType = "update") {
+  const isEnglish = (shipment.preferred_language || "ar") === "en";
+  const location = getLatestShipmentLocation(shipment);
+  const locationLineEn = location ? `Current Location: ${location}\n` : "";
+  const locationLineAr = location ? `الموقع الحالي: ${location}\n` : "";
+
+  if (isEnglish) {
+    if (messageType === "create") {
+      return `Tatweer Tracking System
+
+Dear Customer,
+We would like to inform you that a new shipment has been registered for you with Tatweer Truck Transport Company.
+
+Tracking Number: ${shipment.tracking_number}
+Current Status: ${shipment.english_status}
+${locationLineEn}Estimated Delivery: ${formatDate(shipment.delivery_date)}
+
+You can track your shipment here:
+${shipment.tracking_link}
+
+Thank you for choosing Tatweer.`;
+    }
+
+    return `Tatweer Tracking System
+
+Dear Customer,
+Your shipment status has been updated successfully by Tatweer Truck Transport Company.
+
+Tracking Number: ${shipment.tracking_number}
+Current Status: ${shipment.english_status}
+${locationLineEn}Estimated Delivery: ${formatDate(shipment.delivery_date)}
+
+Track your shipment here:
+${shipment.tracking_link}
+
+Thank you for choosing Tatweer.`;
+  }
+
+  if (messageType === "create") {
+    return `نظام تتبع تطوير
+
+عزيزنا العميل،
+نفيدكم بأنه تم تسجيل شحنة جديدة لكم لدى شركة تطوير للنقل.
+
+رقم الشحنة: ${shipment.tracking_number}
+الحالة الحالية: ${shipment.arabic_status}
+${locationLineAr}موعد التسليم المتوقع: ${formatDate(shipment.delivery_date)}
+
+يمكنكم متابعة الشحنة من خلال الرابط التالي:
+${shipment.tracking_link}
+
+نشكر ثقتكم في تطوير.`;
+  }
+
+  return `نظام تتبع تطوير
+
+عزيزنا العميل،
+تم تحديث حالة شحنتكم بنجاح لدى شركة تطوير للنقل.
+
+رقم الشحنة: ${shipment.tracking_number}
+الحالة الحالية: ${shipment.arabic_status}
+${locationLineAr}موعد التسليم المتوقع: ${formatDate(shipment.delivery_date)}
+
+يمكنكم متابعة الشحنة من خلال الرابط التالي:
+${shipment.tracking_link}
+
+نشكر ثقتكم في تطوير.`;
+}
+
+function openCustomerUpdateWhatsapp(shipment, messageType = "update") {
   const customerPhone = normalizeWhatsappContactNumber(shipment.phone_number);
   if (!customerPhone) {
     return false;
   }
 
-  const message = buildAdminShipmentUpdateMessage(shipment);
+  const message = buildAdminShipmentMessage(shipment, messageType);
   const whatsappUrl = `https://wa.me/${customerPhone}?text=${encodeURIComponent(message)}`;
   window.open(whatsappUrl, "_blank", "noopener");
   return true;
@@ -600,7 +659,7 @@ function setupAdminPage() {
   document.getElementById("shipmentForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
-      await api("/api/shipments", {
+      const createdShipment = await api("/api/shipments", {
         method: "POST",
         body: JSON.stringify({
           tracking_number: document.getElementById("trackingNumberInput").value,
@@ -614,7 +673,10 @@ function setupAdminPage() {
       event.target.reset();
       document.getElementById("preferredLanguageInput").value = "ar";
       await loadAdminShipments();
-      notify(t("addShipmentSuccess"));
+      const creationWhatsappMessage = createdShipment && openCustomerUpdateWhatsapp(createdShipment, "create")
+        ? ` ${t("whatsappOpened")}`
+        : "";
+      notify(`${t("addShipmentSuccess")}${creationWhatsappMessage}`);
     } catch (error) {
       notify(`${t("addShipmentError")} ${error.message}`);
     }
@@ -650,7 +712,7 @@ function setupAdminPage() {
         })
       });
       await loadAdminShipments();
-      const notificationMessage = sendWhatsapp && result.shipment && openCustomerUpdateWhatsapp(result.shipment)
+      const notificationMessage = sendWhatsapp && result.shipment && openCustomerUpdateWhatsapp(result.shipment, "update")
         ? ` ${t("whatsappOpened")}`
         : "";
       notify(`${t("updateShipmentSuccess")}${notificationMessage}`);
