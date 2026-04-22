@@ -422,10 +422,11 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, 401, { error: "Unauthorized" });
         return;
       }
+      const shipments = await database.getAllShipments();
       sendJson(
         res,
         200,
-        database.getAllShipments().map((shipment) => withDerivedFields(shipment, req))
+        shipments.map((shipment) => withDerivedFields(shipment, req))
       );
       return;
     }
@@ -438,7 +439,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       const language = requestUrl.searchParams.get("lang") === "ar" ? "ar" : "en";
-      const shipments = database.getAllShipments();
+      const shipments = await database.getAllShipments();
       const workbookXml = buildShipmentsWorkbookXml(shipments, language);
       const fileName = `tatweer-shipments-${new Date().toISOString().slice(0, 10)}.xls`;
       const body = Buffer.from(workbookXml, "utf8");
@@ -458,7 +459,7 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, 401, { error: "Unauthorized" });
         return;
       }
-      sendJson(res, 200, database.getAllSuggestions());
+      sendJson(res, 200, await database.getAllSuggestions());
       return;
     }
 
@@ -469,7 +470,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      const suggestion = database.createSuggestion({
+      const suggestion = await database.createSuggestion({
         name,
         phone_number,
         tracking_number,
@@ -483,7 +484,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname.startsWith("/api/shipments/") && req.method === "GET") {
       const trackingNumber = pathname.split("/").pop().toUpperCase();
       const requestedLanguage = requestUrl.searchParams.get("lang") === "en" ? "en" : "ar";
-      const shipment = database.getShipment(trackingNumber);
+      const shipment = await database.getShipment(trackingNumber);
 
       if (!shipment) {
         sendJson(res, 404, { error: "Shipment not found" });
@@ -525,13 +526,13 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      const exists = database.getShipment(tracking_number.trim().toUpperCase());
+      const exists = await database.getShipment(tracking_number.trim().toUpperCase());
       if (exists) {
         sendJson(res, 409, { error: "Tracking number already exists" });
         return;
       }
 
-      const shipment = database.createShipment({
+      const shipment = await database.createShipment({
         tracking_number,
         phone_number,
         arabic_status,
@@ -562,7 +563,7 @@ const server = http.createServer(async (req, res) => {
         preferred_language
       } = await readRequestBody(req);
 
-      const shipment = database.updateShipment(trackingNumber, {
+      const shipment = await database.updateShipment(trackingNumber, {
         arabic_status,
         english_status,
         delivery_date,

@@ -43,33 +43,33 @@ node server.js
 
 ## Important Data Storage Note
 
-Shipment data is now stored in a SQLite database file configured by `DATABASE_FILE_PATH`.
+This project now supports two storage drivers:
 
-The app also keeps:
+- `sqlite` for local development
+- `supabase` for a free cloud database that survives Render redeploys
 
-- JSON source files only for one-time migration of old data
-- an append-only audit log at `AUDIT_LOG_FILE_PATH`
-- a persistent SQLite database that keeps shipments, updates, and suggestions together
+If you stay on Render Free, use `supabase`. Render Free does not preserve local files across restarts or redeploys.
 
 For local development:
 
 ```env
+STORAGE_DRIVER=sqlite
 DATA_FILE_PATH=./data/shipments.json
 SUGGESTIONS_FILE_PATH=./data/suggestions.json
 DATABASE_FILE_PATH=./data/tatweer-tracking.sqlite
 AUDIT_LOG_FILE_PATH=./data/audit-log.jsonl
 ```
 
-For Render with a persistent disk attached:
+For Render Free with Supabase:
 
 ```env
-DATA_FILE_PATH=/var/data/shipments.json
-SUGGESTIONS_FILE_PATH=/var/data/suggestions.json
-DATABASE_FILE_PATH=/var/data/tatweer-tracking.sqlite
-AUDIT_LOG_FILE_PATH=/var/data/audit-log.jsonl
+STORAGE_DRIVER=supabase
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+AUDIT_LOG_FILE_PATH=./data/audit-log.jsonl
 ```
 
-Without a persistent disk, Render web services use an ephemeral filesystem, so shipment data can be lost after redeploys or restarts.
+The app can migrate your existing local JSON data into Supabase automatically on first successful connection if the Supabase tables are empty.
 
 ## Default Admin Login
 
@@ -82,13 +82,23 @@ Change these before production use.
 
 This repo includes `render.yaml` for quick deployment.
 
-The included Blueprint now mounts a persistent disk at `/var/data` and points the SQLite database and audit log there.
+For a fully free setup, use Supabase:
 
-Important:
+1. Create a free Supabase project
+2. Open the SQL Editor and run [supabase-schema.sql](./supabase-schema.sql)
+3. In Supabase, copy:
+   - Project URL
+   - service_role key
+4. In Render, set:
 
-- Render persistent disks are available only on paid services, not Free
-- if you stay on Free, no local file-based system can fully guarantee that your shipment data survives redeploys
-- for the highest safety level, use the persistent disk or move later to a managed database
+```env
+STORAGE_DRIVER=supabase
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+AUDIT_LOG_FILE_PATH=./data/audit-log.jsonl
+```
+
+This keeps the app on Render Free while storing the actual shipment data in Supabase.
 
 ### Same Render service for frontend and backend
 
@@ -96,7 +106,7 @@ No `API_BASE_URL` change is usually needed because the frontend falls back to th
 
 ### Separate frontend and backend services
 
-Update `config.js`:
+Update `config.js` if your frontend and backend are on different services:
 
 ```js
 window.APP_CONFIG = {
@@ -108,9 +118,9 @@ window.APP_CONFIG = {
 Set these Render backend environment variables:
 
 ```env
-DATA_FILE_PATH=/var/data/shipments.json
-SUGGESTIONS_FILE_PATH=/var/data/suggestions.json
-DATABASE_FILE_PATH=/var/data/tatweer-tracking.sqlite
+STORAGE_DRIVER=supabase
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 AUDIT_LOG_FILE_PATH=/var/data/audit-log.jsonl
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin123

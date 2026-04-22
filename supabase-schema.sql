@@ -1,0 +1,54 @@
+create table if not exists public.shipments (
+  tracking_number text primary key,
+  phone_number text not null,
+  arabic_status text not null,
+  english_status text not null,
+  last_update_time timestamptz not null,
+  delivery_date date not null,
+  preferred_language text not null default 'ar'
+);
+
+create table if not exists public.shipment_updates (
+  id uuid primary key,
+  tracking_number text not null references public.shipments(tracking_number) on delete cascade,
+  arabic_status text not null,
+  english_status text not null,
+  timestamp timestamptz not null,
+  location text not null default '',
+  progress integer not null default 0
+);
+
+create table if not exists public.suggestions (
+  id uuid primary key,
+  name text not null default '',
+  phone_number text not null default '',
+  tracking_number text not null default '',
+  message text not null,
+  language text not null default 'ar',
+  created_at timestamptz not null
+);
+
+alter table public.shipments enable row level security;
+alter table public.shipment_updates enable row level security;
+alter table public.suggestions enable row level security;
+
+create policy "service role full access shipments"
+on public.shipments
+for all
+to service_role
+using (true)
+with check (true);
+
+create policy "service role full access shipment_updates"
+on public.shipment_updates
+for all
+to service_role
+using (true)
+with check (true);
+
+create policy "service role full access suggestions"
+on public.suggestions
+for all
+to service_role
+using (true)
+with check (true);
