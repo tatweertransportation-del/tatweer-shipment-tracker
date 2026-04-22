@@ -261,6 +261,7 @@ function setLanguage(language) {
 
   if (page === "tracking") {
     renderSearchHistory();
+    syncSupportWhatsappLink(document.getElementById("trackingInput")?.value || "");
   }
 }
 
@@ -393,6 +394,15 @@ function buildCustomerWhatsappLink(trackingNumber) {
   return `https://wa.me/${phone}?text=${encodeURIComponent(localeMessage)}`;
 }
 
+function syncSupportWhatsappLink(trackingNumber = "") {
+  const whatsappLink = document.getElementById("whatsappLink");
+  if (!whatsappLink) {
+    return;
+  }
+  const safeTrackingNumber = trackingNumber || (currentLanguage === "ar" ? "support" : "support");
+  whatsappLink.href = buildCustomerWhatsappLink(safeTrackingNumber);
+}
+
 function renderShipment(shipment) {
   const headline = document.getElementById("trackingHeadline");
   const statusBadge = document.getElementById("statusBadge");
@@ -438,6 +448,7 @@ function bindGlobalControls() {
 function setupTrackingPage() {
   renderSearchHistory();
   renderTimeline([]);
+  syncSupportWhatsappLink();
 
   document.getElementById("trackingForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
