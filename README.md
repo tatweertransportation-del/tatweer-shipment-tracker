@@ -41,6 +41,24 @@ node server.js
 - `http://localhost:3000/index.html`
 - `http://localhost:3000/admin.html`
 
+## Important Data Storage Note
+
+Shipment data is stored in the JSON file configured by `DATA_FILE_PATH`.
+
+For local development:
+
+```env
+DATA_FILE_PATH=./data/shipments.json
+```
+
+For Render with a persistent disk attached:
+
+```env
+DATA_FILE_PATH=/var/data/shipments.json
+```
+
+Without a persistent disk, Render web services use an ephemeral filesystem, so shipment data can be lost after redeploys or restarts.
+
 ## Default Admin Login
 
 - Username: `admin`
@@ -70,6 +88,7 @@ window.APP_CONFIG = {
 Set these Render backend environment variables:
 
 ```env
+DATA_FILE_PATH=/var/data/shipments.json
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin123
 ADMIN_SESSION_SECRET=replace-with-a-strong-secret
