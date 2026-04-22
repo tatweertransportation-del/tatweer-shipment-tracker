@@ -6,7 +6,9 @@ const crypto = require("crypto");
 loadEnvFile(path.join(__dirname, ".env"));
 
 const PORT = Number(process.env.PORT) || 3000;
-const DATA_FILE = path.join(__dirname, "data", "shipments.json");
+const DATA_FILE = process.env.DATA_FILE_PATH
+  ? path.resolve(process.env.DATA_FILE_PATH)
+  : path.join(__dirname, "data", "shipments.json");
 const TRACKING_BASE_URL = process.env.TRACKING_BASE_URL || "";
 const DEFAULT_COUNTRY_CODE = process.env.DEFAULT_COUNTRY_CODE || "20";
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
