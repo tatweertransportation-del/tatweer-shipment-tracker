@@ -16,6 +16,10 @@ const TRANSLATIONS = {
     timeline: "Shipment Timeline",
     latestMilestones: "Latest milestones",
     contactWhatsapp: "Contact via WhatsApp",
+    promoFastDelivery: "⚡ Fast delivery",
+    promoLiveTracking: "📍 Live shipment tracking",
+    promoSafeTransport: "🛡️ Safe transport",
+    promoWhatsappSupport: "💬 WhatsApp support",
     searchHistory: "Search History",
     clearHistory: "Clear",
     supportTitle: "Need help with your cargo?",
@@ -62,7 +66,6 @@ const TRANSLATIONS = {
     statusUpdates: "Status Updates",
     updateShipment: "Update Shipment Status",
     selectShipment: "Select Shipment",
-    predefinedStatus: "Predefined Status",
     customArabicStatus: "Custom Arabic Status",
     customEnglishStatus: "Custom English Status",
     shipmentLocation: "Location",
@@ -117,6 +120,10 @@ const TRANSLATIONS = {
     timeline: "مراحل الشحنة",
     latestMilestones: "أحدث المحطات",
     contactWhatsapp: "تواصل واتساب",
+    promoFastDelivery: "⚡ سرعة في التسليم",
+    promoLiveTracking: "📍 متابعة مباشرة للشحنة",
+    promoSafeTransport: "🛡️ نقل آمن وموثوق",
+    promoWhatsappSupport: "💬 دعم عبر واتساب",
     searchHistory: "سجل البحث",
     clearHistory: "مسح",
     supportTitle: "هل تحتاج مساعدة في شحنتك؟",
@@ -162,7 +169,6 @@ const TRANSLATIONS = {
     statusUpdates: "تحديثات الحالة",
     updateShipment: "تحديث حالة الشحنة",
     selectShipment: "اختر الشحنة",
-    predefinedStatus: "حالة جاهزة",
     customArabicStatus: "حالة مخصصة بالعربية",
     customEnglishStatus: "حالة مخصصة بالإنجليزية",
     shipmentLocation: "الموقع",
@@ -199,29 +205,6 @@ const TRANSLATIONS = {
     anonymousSender: "مرسل بدون اسم",
     themeLight: "☀",
     themeDark: "🌙"
-  }
-};
-
-const PREDEFINED_STATUSES = {
-  safaga: {
-    ar: "وصلت ميناء سفاجا",
-    en: "Arrived at Safaga Port",
-    progress: 55
-  },
-  duba: {
-    ar: "وصلت ميناء ضباء",
-    en: "Arrived at Duba Port",
-    progress: 60
-  },
-  hail: {
-    ar: "داخل حائل - السعودية",
-    en: "In Hail, Saudi Arabia",
-    progress: 80
-  },
-  delivered: {
-    ar: "تم التسليم",
-    en: "Delivered",
-    progress: 100
   }
 };
 
@@ -918,16 +901,6 @@ function setupAdminPage() {
     } catch (error) {
       notify(`${t("addShipmentError")} ${error.message}`);
     }
-  });
-
-  document.getElementById("predefinedStatusSelect")?.addEventListener("change", (event) => {
-    const preset = PREDEFINED_STATUSES[event.target.value];
-    if (!preset) {
-      return;
-    }
-    document.getElementById("updateArabicStatusInput").value = preset.ar;
-    document.getElementById("updateEnglishStatusInput").value = preset.en;
-    document.getElementById("progressInput").value = preset.progress;
   });
 
   document.getElementById("updateForm")?.addEventListener("submit", async (event) => {
