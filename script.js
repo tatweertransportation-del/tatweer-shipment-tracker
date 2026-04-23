@@ -44,10 +44,14 @@ const TRANSLATIONS = {
     supportText:
       "Our logistics team monitors every route, crossing, and handover point so you always know what happens next.",
     suggestionsTitle: "Suggestions and Feedback",
+    suggestionsHeadline: "Help us make tracking better for you",
     suggestionsText:
       "Share any ideas that can improve the tracking experience. Your feedback goes directly to the admin dashboard for review.",
     suggestionsPolicy:
       "We welcome your suggestions and feedback. Please keep your message respectful and constructive.",
+    suggestionBenefitDirect: "📬 Direct to operations",
+    suggestionBenefitFast: "⚡ Fast review",
+    suggestionBenefitBetter: "✨ Better customer experience",
     suggestionName: "Your Name",
     suggestionPhone: "Phone Number",
     suggestionTracking: "Tracking Number (Optional)",
@@ -170,10 +174,14 @@ const TRANSLATIONS = {
     supportText:
       "فريقنا اللوجستي يراقب كل مسار ونقطة عبور وتسليم حتى تكون على اطلاع دائم بما يحدث.",
     suggestionsTitle: "الاقتراحات والملاحظات",
+    suggestionsHeadline: "ساعدنا نخلي تجربة التتبع أفضل",
     suggestionsText:
       "اكتب أي فكرة أو اقتراح يمكن أن يحسن تجربة التتبع، وسيظهر مباشرة داخل لوحة الإدارة للمراجعة.",
     suggestionsPolicy:
       "يسعدنا استقبال اقتراحاتكم وملاحظاتكم، ونرجو أن تكون الرسائل بلغة محترمة وبنّاءة.",
+    suggestionBenefitDirect: "📬 تصل مباشرة لفريق التشغيل",
+    suggestionBenefitFast: "⚡ مراجعة سريعة",
+    suggestionBenefitBetter: "✨ تجربة أفضل للعملاء",
     suggestionName: "الاسم",
     suggestionPhone: "رقم الهاتف",
     suggestionTracking: "رقم الشحنة (اختياري)",
