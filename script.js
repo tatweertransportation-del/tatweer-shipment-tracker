@@ -32,16 +32,19 @@ const TRANSLATIONS = {
       "Enter your tracking number and the documents password sent by Tatweer to view shipment files.",
     documentsPassword: "Documents Password",
     viewDocuments: "View Documents",
+    documentsLoaded: "Shipment documents are ready. You can open or download each file below.",
     noDocuments: "No shipment documents are available yet.",
     documentsError: "Unable to load shipment documents.",
     downloadFile: "Open File",
+    saveFile: "Download",
     adminDocumentsTitle: "Shipment Documents",
     adminDocumentsSubtitle: "Upload or replace customer shipment papers",
     shipmentFiles: "Shipment Files",
     sendFilesWhatsapp: "Open WhatsApp message with documents password",
     saveShipmentFiles: "Save Shipment Files",
-    shipmentFilesSaved: "Shipment files saved successfully.",
+    shipmentFilesSaved: "Shipment documents were saved successfully. The old files were replaced with the new uploaded files.",
     shipmentFilesError: "Unable to save shipment files.",
+    currentShipmentFiles: "Current Shipment Files",
     promoFastDelivery: "⚡ Fast delivery",
     promoLiveTracking: "📍 Live shipment tracking",
     promoSafeTransport: "🛡️ Safe transport",
@@ -192,16 +195,19 @@ const TRANSLATIONS = {
     documentsText: "أدخل رقم الشحنة وكلمة مرور الأوراق المرسلة من تطوير لعرض الملفات.",
     documentsPassword: "كلمة مرور الأوراق",
     viewDocuments: "عرض الأوراق",
+    documentsLoaded: "أوراق الشحنة جاهزة. يمكنك فتح أو تحميل كل ملف من القائمة التالية.",
     noDocuments: "لا توجد أوراق متاحة للشحنة حتى الآن.",
     documentsError: "تعذر تحميل أوراق الشحنة.",
     downloadFile: "فتح الملف",
+    saveFile: "تحميل",
     adminDocumentsTitle: "أوراق الشحنة",
     adminDocumentsSubtitle: "رفع أو استبدال أوراق الشحنة للعميل",
     shipmentFiles: "ملفات الشحنة",
     sendFilesWhatsapp: "فتح رسالة واتساب بكلمة مرور الأوراق",
     saveShipmentFiles: "حفظ ملفات الشحنة",
-    shipmentFilesSaved: "تم حفظ ملفات الشحنة بنجاح.",
+    shipmentFilesSaved: "تم حفظ أوراق الشحنة بنجاح، وتم استبدال الملفات القديمة بالملفات الجديدة.",
     shipmentFilesError: "تعذر حفظ ملفات الشحنة.",
+    currentShipmentFiles: "ملفات الشحنة الحالية",
     promoFastDelivery: "⚡ سرعة في التسليم",
     promoLiveTracking: "📍 متابعة مباشرة للشحنة",
     promoSafeTransport: "🛡️ نقل آمن وموثوق",
@@ -667,9 +673,9 @@ function renderSearchHistory() {
   container.innerHTML = history
     .map(
       (item) => `
-        <div class="history-entry">
-          <button type="button" data-history-item="${item}">${item}</button>
-          <span>📦</span>
+        <div class="history-entry" data-history-item="${escapeHtml(item)}" role="button" tabindex="0">
+          <span class="history-code">${escapeHtml(item)}</span>
+          <span aria-hidden="true">📦</span>
         </div>
       `
     )
@@ -719,6 +725,51 @@ async function fileToPayload(file) {
 function buildCustomerFilesWhatsappLink(phoneNumber, message) {
   const phone = normalizeWhatsappContactNumber(phoneNumber);
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+
+function renderAdminShipmentFiles(files = []) {
+  const container = document.getElementById("adminShipmentFilesPreview");
+  if (!container) {
+    return;
+  }
+
+  if (!files.length) {
+    container.innerHTML = `<div class="empty-state">${t("noDocuments")}</div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <h4>${t("currentShipmentFiles")}</h4>
+    <div class="documents-list">
+      ${files
+        .map(
+          (file) => `
+            <article class="document-item">
+              <div>
+                <strong>${escapeHtml(file.file_name)}</strong>
+                <p>${escapeHtml(file.mime_type)} • ${Math.ceil(Number(file.file_size || 0) / 1024)} KB</p>
+              </div>
+            </article>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+async function loadAdminShipmentFiles() {
+  const trackingNumber = document.getElementById("filesShipmentSelect")?.value;
+  if (!trackingNumber) {
+    renderAdminShipmentFiles([]);
+    return;
+  }
+
+  try {
+    const result = await api(`/api/admin/shipment-files/${encodeURIComponent(trackingNumber)}`);
+    renderAdminShipmentFiles(result.files || []);
+  } catch (error) {
+    renderAdminShipmentFiles([]);
+  }
 }
 
 function renderTimeline(history = []) {
@@ -825,17 +876,23 @@ function renderDocuments(files, trackingNumber, password) {
       const href = buildFileUrl(
         `/api/shipment-files/${encodeURIComponent(trackingNumber)}/${encodeURIComponent(file.id)}?password=${encodeURIComponent(password)}`
       );
+      const downloadHref = `${href}&download=1`;
       return `
         <article class="document-item">
           <div>
             <strong>${escapeHtml(file.file_name)}</strong>
             <p>${escapeHtml(file.mime_type)} • ${Math.ceil(Number(file.file_size || 0) / 1024)} KB</p>
           </div>
-          <a class="ghost-outline-btn" href="${href}" target="_blank" rel="noopener">${t("downloadFile")}</a>
+          <div class="document-actions">
+            <a class="ghost-outline-btn" href="${href}" target="_blank" rel="noopener">${t("downloadFile")}</a>
+            <a class="primary-btn" href="${downloadHref}">${t("saveFile")}</a>
+          </div>
         </article>
       `;
     })
     .join("");
+
+  container.insertAdjacentHTML("afterbegin", `<div class="feedback-box">${t("documentsLoaded")}</div>`);
 }
 
 function setRatingStars(value) {
@@ -1038,8 +1095,7 @@ function setupTrackingPage() {
     }
   });
 
-  document.getElementById("searchHistoryList")?.addEventListener("click", async (event) => {
-    const target = event.target.closest("[data-history-item]");
+  const openHistoryShipment = async (target) => {
     if (!target) {
       return;
     }
@@ -1050,6 +1106,24 @@ function setupTrackingPage() {
     } catch (error) {
       renderShipmentNotFound(trackingNumber);
     }
+  };
+
+  const historyList = document.getElementById("searchHistoryList");
+  historyList?.addEventListener("click", async (event) => {
+    const target = event.target.closest(".history-entry[data-history-item]");
+    await openHistoryShipment(target);
+  });
+
+  historyList?.addEventListener("keydown", async (event) => {
+    if (!["Enter", " "].includes(event.key)) {
+      return;
+    }
+    const target = event.target.closest(".history-entry[data-history-item]");
+    if (!target) {
+      return;
+    }
+    event.preventDefault();
+    await openHistoryShipment(target);
   });
 
   document.getElementById("clearHistoryBtn")?.addEventListener("click", () => {
@@ -1139,6 +1213,7 @@ function renderShipmentOptions(shipments) {
           }</option>`
       )
       .join("");
+    loadAdminShipmentFiles();
   }
 }
 
@@ -1396,12 +1471,17 @@ function setupAdminPage() {
     syncSelectedShipmentNotes();
   });
 
+  document.getElementById("filesShipmentSelect")?.addEventListener("change", () => {
+    loadAdminShipmentFiles();
+  });
+
   document.getElementById("shipmentFilesForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
-      await saveShipmentFilesFromAdmin();
+      const result = await saveShipmentFilesFromAdmin();
       event.target.reset();
       renderShipmentOptions(adminState.shipments);
+      renderAdminShipmentFiles(result.files || []);
       notify(t("shipmentFilesSaved"));
     } catch (error) {
       notify(`${t("shipmentFilesError")} ${error.message}`);

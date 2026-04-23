@@ -593,6 +593,14 @@ body.light-mode .status-badge {
   gap: 12px;
 }
 
+.admin-files-preview {
+  margin-top: 18px;
+}
+
+.admin-files-preview h4 {
+  margin: 0 0 12px;
+}
+
 .document-item {
   display: flex;
   align-items: center;
@@ -607,6 +615,12 @@ body.light-mode .status-badge {
 .document-item p {
   margin: 4px 0 0;
   color: var(--muted);
+}
+
+.document-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .suggestions-section::before {
@@ -690,15 +704,20 @@ body.light-mode .status-badge {
   padding: 12px 14px;
   border-radius: 16px;
   background: var(--surface-soft);
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
 }
 
-.history-entry button {
-  background: transparent;
-  border: 0;
+.history-entry:hover,
+.history-entry:focus-visible {
+  background: rgba(221, 168, 137, 0.14);
+  outline: 1px solid rgba(221, 168, 137, 0.42);
+  transform: translateY(-1px);
+}
+
+.history-code {
   color: var(--text);
-  cursor: pointer;
-  font: inherit;
-  padding: 0;
+  font-weight: 800;
 }
 
 .icon-row {
@@ -865,6 +884,10 @@ tbody tr:hover {
 
   .document-item {
     align-items: stretch;
+    flex-direction: column;
+  }
+
+  .document-actions {
     flex-direction: column;
   }
 }

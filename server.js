@@ -257,11 +257,11 @@ function sendText(res, statusCode, body, contentType = "text/plain; charset=utf-
   res.end(body);
 }
 
-function sendBinary(res, statusCode, body, contentType, fileName) {
+function sendBinary(res, statusCode, body, contentType, fileName, forceDownload = false) {
   res.writeHead(statusCode, {
     "Content-Type": contentType || "application/octet-stream",
     "Content-Length": body.length,
-    "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(fileName || "shipment-file")}`,
+    "Content-Disposition": `${forceDownload ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(fileName || "shipment-file")}`,
     "Cache-Control": "private, no-store"
   });
   res.end(body);
@@ -292,32 +292,36 @@ function sanitizeUploadedFile(file) {
 function buildShipmentFilesWhatsappMessage(trackingNumber, password, req, language = "ar") {
   const documentsLink = `${getPublicBaseUrl(req)}/?documents=${encodeURIComponent(trackingNumber)}`;
   if (language === "en") {
-    return `Tatweer Logistics
+    return `Tatweer Logistics Services
 
 Dear customer,
-Shipment documents have been updated.
+Your shipment documents have been uploaded successfully and are now available securely through the tracking portal.
 
 Tracking Number: ${trackingNumber}
 Documents Password: ${password}
 
-Open shipment documents:
+To view your shipment documents, please open this link:
 ${documentsLink}
 
-Please keep this password private.`;
+For your privacy, please keep this password confidential and do not share it with anyone except authorized persons.
+
+Thank you for choosing Tatweer.`;
   }
 
-  return `ØªØ·ÙˆÙŠØ± Ù„Ù„Ø®Ø¯Ù…Ø§Øª Ø§Ù„Ù„ÙˆØ¬Ø³ØªÙŠØ©
+  return `تطوير للخدمات اللوجستية
 
-Ø¹Ø²ÙŠØ²Ù†Ø§ Ø§Ù„Ø¹Ù…ÙŠÙ„ØŒ
-ØªÙ… ØªØ­Ø¯ÙŠØ« Ø£ÙˆØ±Ø§Ù‚ Ø´Ø­Ù†ØªÙƒÙ….
+عزيزنا العميل،
+تم رفع أوراق شحنتكم بنجاح، وأصبحت متاحة الآن بشكل آمن من خلال بوابة التتبع.
 
-Ø±Ù‚Ù… Ø§Ù„Ø´Ø­Ù†Ø©: ${trackingNumber}
-ÙƒÙ„Ù…Ø© Ù…Ø±ÙˆØ± Ø§Ù„Ø£ÙˆØ±Ø§Ù‚: ${password}
+رقم الشحنة: ${trackingNumber}
+كلمة مرور أوراق الشحنة: ${password}
 
-Ø±Ø§Ø¨Ø· Ø£ÙˆØ±Ø§Ù‚ Ø§Ù„Ø´Ø­Ù†Ø©:
+لعرض أوراق الشحنة، يرجى فتح الرابط التالي:
 ${documentsLink}
 
-ÙŠØ±Ø¬Ù‰ Ø§Ù„Ø­ÙØ§Ø¸ Ø¹Ù„Ù‰ ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± Ø¨Ø´ÙƒÙ„ Ø®Ø§Øµ.`;
+حرصًا على خصوصيتكم، يرجى الاحتفاظ بكلمة المرور وعدم مشاركتها إلا مع الأشخاص المصرح لهم.
+
+نشكر ثقتكم في تطوير.`;
 }
 
 function redirect(res, location) {
@@ -697,6 +701,27 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "GET" && pathname.startsWith("/api/admin/shipment-files/")) {
+      const session = getSessionFromRequest(req);
+      if (!session) {
+        sendJson(res, 401, { error: "Unauthorized" });
+        return;
+      }
+
+      const trackingNumber = pathname.split("/").pop().toUpperCase();
+      const shipment = await database.getShipment(trackingNumber);
+      if (!shipment) {
+        sendJson(res, 404, { error: "Shipment not found" });
+        return;
+      }
+
+      sendJson(res, 200, {
+        tracking_number: trackingNumber,
+        files: await database.getShipmentFiles(trackingNumber)
+      });
+      return;
+    }
+
     if (req.method === "GET" && pathname.startsWith("/api/shipment-files/")) {
       const parts = pathname.split("/");
       const trackingNumber = String(parts[3] || "").trim().toUpperCase();
@@ -715,7 +740,14 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      sendBinary(res, 200, Buffer.from(file.content_base64, "base64"), file.mime_type, file.file_name);
+      sendBinary(
+        res,
+        200,
+        Buffer.from(file.content_base64, "base64"),
+        file.mime_type,
+        file.file_name,
+        requestUrl.searchParams.get("download") === "1"
+      );
       return;
     }
 
