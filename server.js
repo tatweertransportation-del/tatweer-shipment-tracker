@@ -403,6 +403,53 @@ ${documentsLink}
 \u0646\u0634\u0643\u0631\u0643\u0645 \u0639\u0644\u0649 \u062b\u0642\u062a\u0643\u0645 \u0641\u064a \u062a\u0637\u0648\u064a\u0631.`;
 }
 
+function buildShipmentDocumentsWhatsappMessage(trackingNumber, password, req, language = "ar") {
+  const documentsLink = `${getPublicBaseUrl(req)}/?documents=${encodeURIComponent(trackingNumber)}`;
+  const hasNewPassword = Boolean(String(password || "").trim());
+
+  if (language === "en") {
+    const passwordLine = hasNewPassword
+      ? `Documents Password: ${password}`
+      : "Documents Password: Please use the same documents password previously sent to you.";
+
+    return `Tatweer Logistics Services
+
+Dear customer,
+
+Your shipment documents are now available on Tatweer Tracking System.
+
+Shipment Number: ${trackingNumber}
+${passwordLine}
+
+You can view or download your shipment documents securely through the following link:
+${documentsLink}
+
+Please keep this password confidential to protect your shipment information.
+
+Thank you for choosing Tatweer Logistics Services.`;
+  }
+
+  const passwordLine = hasNewPassword
+    ? `كلمة مرور الأوراق: ${password}`
+    : "كلمة مرور الأوراق: يرجى استخدام نفس كلمة المرور المرسلة لكم سابقًا.";
+
+  return `تطوير للخدمات اللوجستية
+
+عزيزنا العميل،
+
+نود إبلاغكم بأن أوراق الشحنة أصبحت متاحة الآن على نظام Tatweer Tracking System.
+
+رقم الشحنة: ${trackingNumber}
+${passwordLine}
+
+يمكنكم عرض أو تحميل أوراق الشحنة بأمان من خلال الرابط التالي:
+${documentsLink}
+
+يرجى الاحتفاظ بكلمة المرور وعدم مشاركتها حفاظًا على سرية بيانات شحنتكم.
+
+شكرًا لاختياركم تطوير للخدمات اللوجستية.`;
+}
+
 function redirect(res, location) {
   res.writeHead(302, {
     Location: location,
@@ -900,7 +947,7 @@ const server = http.createServer(async (req, res) => {
       const shipment = await database.getShipment(trackingNumber);
       sendJson(res, 200, {
         files: savedFiles,
-        whatsapp_message: buildCleanShipmentFilesWhatsappMessage(
+        whatsapp_message: buildShipmentDocumentsWhatsappMessage(
           trackingNumber,
           password,
           req,
