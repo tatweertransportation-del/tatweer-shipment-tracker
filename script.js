@@ -57,7 +57,7 @@ const TRANSLATIONS = {
     submitSuggestion: "Send Suggestion",
     suggestionSuccess: "Your suggestion was sent successfully.",
     suggestionError: "Unable to send your suggestion.",
-    updateTimeOnly: "Updates daily at 2:00 PM",
+    updateTimeOnly: "Updates daily at {time} your local time",
     exportExcel: "Export Excel",
     exportReady: "Excel file downloaded successfully.",
     adminBadge: "Operations Control Center",
@@ -181,7 +181,7 @@ const TRANSLATIONS = {
     submitSuggestion: "إرسال الاقتراح",
     suggestionSuccess: "تم إرسال اقتراحك بنجاح.",
     suggestionError: "تعذر إرسال الاقتراح.",
-    updateTimeOnly: "يتم التحديث يوميًا الساعة 2:00 ظهرًا",
+    updateTimeOnly: "يتم التحديث يوميًا الساعة {time} بتوقيتك المحلي",
     exportExcel: "استخراج إكسل",
     exportReady: "تم تنزيل ملف الإكسل بنجاح.",
     adminBadge: "مركز التحكم التشغيلي",
@@ -468,6 +468,54 @@ function formatTimeOnly(dateString) {
   }).format(new Date(dateString));
 }
 
+function getTimeZoneDateParts(date, timeZone) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  });
+
+  return Object.fromEntries(
+    formatter.formatToParts(date)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, Number(part.value)])
+  );
+}
+
+function getTimeZoneOffsetMs(timeZone, date) {
+  const parts = getTimeZoneDateParts(date, timeZone);
+  const hour = parts.hour === 24 ? 0 : parts.hour;
+  const zonedTime = Date.UTC(parts.year, parts.month - 1, parts.day, hour, parts.minute, parts.second);
+  return zonedTime - date.getTime();
+}
+
+function getEgyptUpdateInstant() {
+  const egyptTimeZone = "Africa/Cairo";
+  const nowInEgypt = getTimeZoneDateParts(new Date(), egyptTimeZone);
+  let utcTime = Date.UTC(nowInEgypt.year, nowInEgypt.month - 1, nowInEgypt.day, 14, 0, 0);
+
+  for (let index = 0; index < 2; index += 1) {
+    utcTime = Date.UTC(nowInEgypt.year, nowInEgypt.month - 1, nowInEgypt.day, 14, 0, 0) -
+      getTimeZoneOffsetMs(egyptTimeZone, new Date(utcTime));
+  }
+
+  return new Date(utcTime);
+}
+
+function getLocalizedUpdateTimeText() {
+  const locale = currentLanguage === "ar" ? "ar-EG" : undefined;
+  const time = new Intl.DateTimeFormat(locale, {
+    hour: "numeric",
+    minute: "2-digit"
+  }).format(getEgyptUpdateInstant());
+  return t("updateTimeOnly").replace("{time}", time);
+}
+
 function getSearchHistory() {
   try {
     return JSON.parse(localStorage.getItem(storageKeys.history) || "[]");
@@ -605,7 +653,7 @@ function renderShipment(shipment) {
     currentLanguage === "ar" ? shipment.arabic_status : shipment.english_status;
   lastUpdateValue.textContent = formatDate(shipment.last_update_time);
   if (lastUpdateTimeValue) {
-    lastUpdateTimeValue.textContent = t("updateTimeOnly");
+    lastUpdateTimeValue.textContent = getLocalizedUpdateTimeText();
   }
   etaValue.textContent = formatDate(shipment.delivery_date);
   progressValue.textContent = `${shipment.progress}%`;
