@@ -501,10 +501,6 @@ function createSupabaseDatabase(options) {
     }
 
     const uploadedAt = new Date().toISOString();
-    await request("DELETE", "shipment_files", {
-      query: { tracking_number: `eq.${trackingNumber}` },
-      prefer: "return=minimal"
-    });
 
     if (passwordHash) {
       await request("POST", "shipment_file_access", {
@@ -532,7 +528,7 @@ function createSupabaseDatabase(options) {
       });
     }
 
-    appendAuditLog("shipment.files.replaced", {
+    appendAuditLog("shipment.files.added", {
       tracking_number: trackingNumber,
       files_count: files.length
     });

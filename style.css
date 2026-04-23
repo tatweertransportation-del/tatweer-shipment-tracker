@@ -744,6 +744,25 @@ body.light-mode .status-badge {
   margin-top: 18px;
 }
 
+.admin-whatsapp-action {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid rgba(37, 211, 102, 0.28);
+  border-radius: var(--radius-md);
+  background: rgba(37, 211, 102, 0.08);
+}
+
+.admin-whatsapp-action p {
+  margin: 0;
+  color: var(--text);
+}
+
+.admin-whatsapp-action .whatsapp-btn {
+  justify-self: start;
+}
+
 .stack-form label,
 .stack-form .form-field {
   display: grid;

@@ -43,10 +43,12 @@ const TRANSLATIONS = {
     shipmentFiles: "Shipment Files",
     sendFilesWhatsapp: "Open WhatsApp message with documents password",
     saveShipmentFiles: "Save Shipment Files",
-    shipmentFilesSaved: "Shipment documents were saved successfully. The old files were replaced with the new uploaded files.",
+    shipmentFilesSaved: "Shipment documents were added successfully. Existing files were kept.",
     shipmentFilesError: "Unable to save shipment files.",
     shipmentFilesWhatsappMissingPhone: "Documents were saved, but this shipment has no customer phone number for WhatsApp.",
     shipmentFilesWhatsappBlocked: "Documents were saved, but the browser blocked WhatsApp. Please allow pop-ups and try again.",
+    shipmentFilesWhatsappReady: "Documents were saved. Click the WhatsApp button below to send the customer message.",
+    openFilesWhatsapp: "Send documents message on WhatsApp",
     currentShipmentFiles: "Current Shipment Files",
     deleteShipmentFile: "Delete file",
     deleteShipmentFileConfirm: "Delete this file from the shipment documents?",
@@ -209,14 +211,16 @@ const TRANSLATIONS = {
     downloadFile: "فتح الملف",
     saveFile: "تحميل",
     adminDocumentsTitle: "أوراق الشحنة",
-    adminDocumentsSubtitle: "رفع أو استبدال أوراق الشحنة للعميل",
+    adminDocumentsSubtitle: "رفع وإضافة أوراق الشحنة للعميل",
     shipmentFiles: "ملفات الشحنة",
     sendFilesWhatsapp: "فتح رسالة واتساب بكلمة مرور الأوراق",
     saveShipmentFiles: "حفظ ملفات الشحنة",
-    shipmentFilesSaved: "تم حفظ أوراق الشحنة بنجاح، وتم استبدال الملفات القديمة بالملفات الجديدة.",
+    shipmentFilesSaved: "تمت إضافة أوراق الشحنة بنجاح، والملفات القديمة ما زالت محفوظة.",
     shipmentFilesError: "تعذر حفظ ملفات الشحنة.",
     shipmentFilesWhatsappMissingPhone: "تم حفظ أوراق الشحنة، لكن هذه الشحنة ليس بها رقم هاتف للعميل لإرسال واتساب.",
     shipmentFilesWhatsappBlocked: "تم حفظ أوراق الشحنة، لكن المتصفح منع فتح واتساب. برجاء السماح بالنوافذ المنبثقة والمحاولة مرة أخرى.",
+    shipmentFilesWhatsappReady: "تم حفظ أوراق الشحنة. اضغط على زر واتساب بالأسفل لإرسال الرسالة للعميل.",
+    openFilesWhatsapp: "إرسال رسالة الأوراق على واتساب",
     currentShipmentFiles: "ملفات الشحنة الحالية",
     deleteShipmentFile: "حذف الملف",
     deleteShipmentFileConfirm: "هل تريد حذف هذا الملف من أوراق الشحنة؟",
@@ -742,6 +746,27 @@ function buildCustomerFilesWhatsappLink(phoneNumber, message) {
     return "";
   }
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+
+function renderShipmentFilesWhatsappAction(whatsappUrl = "") {
+  const container = document.getElementById("shipmentFilesWhatsappAction");
+  if (!container) {
+    return;
+  }
+
+  if (!whatsappUrl) {
+    container.classList.add("hidden");
+    container.innerHTML = "";
+    return;
+  }
+
+  container.classList.remove("hidden");
+  container.innerHTML = `
+    <p>${t("shipmentFilesWhatsappReady")}</p>
+    <a class="whatsapp-btn" href="${whatsappUrl}" target="_blank" rel="noopener">
+      ${t("openFilesWhatsapp")}
+    </a>
+  `;
 }
 
 function renderAdminShipmentFiles(files = []) {
@@ -1467,11 +1492,8 @@ async function saveShipmentFilesFromAdmin() {
     if (!whatsappUrl) {
       result.whatsapp_warning = t("shipmentFilesWhatsappMissingPhone");
     } else {
-      const openedWindow = window.open(whatsappUrl, "_blank", "noopener");
-      result.whatsapp_opened = Boolean(openedWindow);
-      if (!openedWindow) {
-        result.whatsapp_warning = t("shipmentFilesWhatsappBlocked");
-      }
+      result.whatsapp_url = whatsappUrl;
+      result.whatsapp_ready = true;
     }
   }
 
@@ -1521,6 +1543,7 @@ function setupAdminPage() {
   });
 
   document.getElementById("filesShipmentSelect")?.addEventListener("change", () => {
+    renderShipmentFilesWhatsappAction();
     loadAdminShipmentFiles();
   });
 
@@ -1545,12 +1568,14 @@ function setupAdminPage() {
 
   document.getElementById("shipmentFilesForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    renderShipmentFilesWhatsappAction();
     try {
       const result = await saveShipmentFilesFromAdmin();
       event.target.reset();
       renderShipmentOptions(adminState.shipments);
       renderAdminShipmentFiles(result.files || []);
-      const whatsappNote = result.whatsapp_warning || (result.whatsapp_opened ? ` ${t("whatsappOpened")}` : "");
+      renderShipmentFilesWhatsappAction(result.whatsapp_url);
+      const whatsappNote = result.whatsapp_warning || (result.whatsapp_ready ? ` ${t("shipmentFilesWhatsappReady")}` : "");
       notify(`${t("shipmentFilesSaved")}${whatsappNote ? ` ${whatsappNote}` : ""}`);
     } catch (error) {
       notify(`${t("shipmentFilesError")} ${error.message}`);
