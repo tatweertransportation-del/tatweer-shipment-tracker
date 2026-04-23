@@ -76,6 +76,13 @@ function hashPassword(password) {
   return crypto.createHash("sha256").update(String(password || "")).digest("hex");
 }
 
+function hashFilePassword(trackingNumber, password) {
+  return crypto
+    .createHash("sha256")
+    .update(`${String(trackingNumber || "").toUpperCase()}::${String(password || "")}`)
+    .digest("hex");
+}
+
 function safeCompare(left, right) {
   const leftBuffer = Buffer.from(String(left || ""));
   const rightBuffer = Buffer.from(String(right || ""));
@@ -204,6 +211,34 @@ function readRequestBody(req) {
   });
 }
 
+function readRequestBodyWithLimit(req, maxBytes) {
+  return new Promise((resolve, reject) => {
+    let raw = "";
+
+    req.on("data", (chunk) => {
+      raw += chunk;
+      if (raw.length > maxBytes) {
+        reject(new Error("Payload too large"));
+      }
+    });
+
+    req.on("end", () => {
+      if (!raw) {
+        resolve({});
+        return;
+      }
+
+      try {
+        resolve(JSON.parse(raw));
+      } catch (error) {
+        reject(new Error("Invalid JSON payload"));
+      }
+    });
+
+    req.on("error", reject);
+  });
+}
+
 function sendJson(res, statusCode, payload) {
   const body = JSON.stringify(payload);
   res.writeHead(statusCode, {
@@ -220,6 +255,69 @@ function sendText(res, statusCode, body, contentType = "text/plain; charset=utf-
     "Content-Length": Buffer.byteLength(body)
   });
   res.end(body);
+}
+
+function sendBinary(res, statusCode, body, contentType, fileName) {
+  res.writeHead(statusCode, {
+    "Content-Type": contentType || "application/octet-stream",
+    "Content-Length": body.length,
+    "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(fileName || "shipment-file")}`,
+    "Cache-Control": "private, no-store"
+  });
+  res.end(body);
+}
+
+function sanitizeUploadedFile(file) {
+  const fileName = path.basename(String(file.file_name || "shipment-file"));
+  const mimeType = String(file.mime_type || "application/octet-stream").trim();
+  const contentBase64 = String(file.content_base64 || "").replace(/^data:[^;]+;base64,/, "");
+  const buffer = Buffer.from(contentBase64, "base64");
+
+  if (!buffer.length) {
+    throw new Error("Uploaded file is empty.");
+  }
+
+  if (buffer.length > 8 * 1024 * 1024) {
+    throw new Error("Each file must be 8MB or smaller.");
+  }
+
+  return {
+    file_name: fileName,
+    mime_type: mimeType,
+    file_size: buffer.length,
+    content_base64: buffer.toString("base64")
+  };
+}
+
+function buildShipmentFilesWhatsappMessage(trackingNumber, password, req, language = "ar") {
+  const documentsLink = `${getPublicBaseUrl(req)}/?documents=${encodeURIComponent(trackingNumber)}`;
+  if (language === "en") {
+    return `Tatweer Logistics
+
+Dear customer,
+Shipment documents have been updated.
+
+Tracking Number: ${trackingNumber}
+Documents Password: ${password}
+
+Open shipment documents:
+${documentsLink}
+
+Please keep this password private.`;
+  }
+
+  return `ØªØ·ÙˆÙŠØ± Ù„Ù„Ø®Ø¯Ù…Ø§Øª Ø§Ù„Ù„ÙˆØ¬Ø³ØªÙŠØ©
+
+Ø¹Ø²ÙŠØ²Ù†Ø§ Ø§Ù„Ø¹Ù…ÙŠÙ„ØŒ
+ØªÙ… ØªØ­Ø¯ÙŠØ« Ø£ÙˆØ±Ø§Ù‚ Ø´Ø­Ù†ØªÙƒÙ….
+
+Ø±Ù‚Ù… Ø§Ù„Ø´Ø­Ù†Ø©: ${trackingNumber}
+ÙƒÙ„Ù…Ø© Ù…Ø±ÙˆØ± Ø§Ù„Ø£ÙˆØ±Ø§Ù‚: ${password}
+
+Ø±Ø§Ø¨Ø· Ø£ÙˆØ±Ø§Ù‚ Ø§Ù„Ø´Ø­Ù†Ø©:
+${documentsLink}
+
+ÙŠØ±Ø¬Ù‰ Ø§Ù„Ø­ÙØ§Ø¸ Ø¹Ù„Ù‰ ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± Ø¨Ø´ÙƒÙ„ Ø®Ø§Øµ.`;
 }
 
 function redirect(res, location) {
@@ -543,6 +641,90 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       sendJson(res, 200, await database.getAllSuggestions());
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/shipment-files/lookup") {
+      const { tracking_number, password } = await readRequestBody(req);
+      const trackingNumber = String(tracking_number || "").trim().toUpperCase();
+      if (!trackingNumber || !password) {
+        sendJson(res, 400, { error: "Tracking number and password are required" });
+        return;
+      }
+
+      const access = await database.getShipmentFileAccess(trackingNumber);
+      if (!access || !safeCompare(access.password_hash, hashFilePassword(trackingNumber, password))) {
+        sendJson(res, 401, { error: "Invalid documents password" });
+        return;
+      }
+
+      const files = await database.getShipmentFiles(trackingNumber);
+      sendJson(res, 200, { tracking_number: trackingNumber, files });
+      return;
+    }
+
+    if (req.method === "GET" && pathname.startsWith("/api/shipment-files/")) {
+      const parts = pathname.split("/");
+      const trackingNumber = String(parts[3] || "").trim().toUpperCase();
+      const fileId = String(parts[4] || "").trim();
+      const password = requestUrl.searchParams.get("password") || "";
+
+      const access = await database.getShipmentFileAccess(trackingNumber);
+      if (!access || !safeCompare(access.password_hash, hashFilePassword(trackingNumber, password))) {
+        sendJson(res, 401, { error: "Invalid documents password" });
+        return;
+      }
+
+      const file = await database.getShipmentFile(trackingNumber, fileId);
+      if (!file) {
+        sendJson(res, 404, { error: "File not found" });
+        return;
+      }
+
+      sendBinary(res, 200, Buffer.from(file.content_base64, "base64"), file.mime_type, file.file_name);
+      return;
+    }
+
+    if (req.method === "POST" && pathname.startsWith("/api/admin/shipment-files/")) {
+      const session = getSessionFromRequest(req);
+      if (!session) {
+        sendJson(res, 401, { error: "Unauthorized" });
+        return;
+      }
+
+      const trackingNumber = pathname.split("/").pop().toUpperCase();
+      const payload = await readRequestBodyWithLimit(req, 35 * 1024 * 1024);
+      const password = String(payload.password || "").trim();
+      const files = Array.isArray(payload.files) ? payload.files : [];
+
+      if (!trackingNumber || !password || !files.length) {
+        sendJson(res, 400, { error: "Tracking number, password, and files are required" });
+        return;
+      }
+
+      const cleanFiles = files.map(sanitizeUploadedFile);
+      const savedFiles = await database.replaceShipmentFiles(
+        trackingNumber,
+        cleanFiles,
+        hashFilePassword(trackingNumber, password)
+      );
+
+      if (!savedFiles) {
+        sendJson(res, 404, { error: "Shipment not found" });
+        return;
+      }
+
+      const shipment = await database.getShipment(trackingNumber);
+      sendJson(res, 200, {
+        files: savedFiles,
+        whatsapp_message: buildShipmentFilesWhatsappMessage(
+          trackingNumber,
+          password,
+          req,
+          shipment?.preferred_language || "ar"
+        ),
+        phone_number: shipment?.phone_number || ""
+      });
       return;
     }
 

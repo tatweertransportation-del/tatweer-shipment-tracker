@@ -155,6 +155,32 @@
           </aside>
         </section>
 
+        <section class="glass-card documents-section">
+          <div class="documents-copy">
+            <p class="card-label" data-i18n="documentsTitle">Shipment Documents</p>
+            <h3 data-i18n="documentsHeadline">View your shipment papers securely</h3>
+            <p data-i18n="documentsText">
+              Enter your tracking number and the documents password sent by Tatweer to view shipment files.
+            </p>
+          </div>
+
+          <form id="documentsLookupForm" class="stack-form documents-form">
+            <div class="form-row">
+              <label>
+                <span data-i18n="trackingNumber">Tracking Number</span>
+                <input type="text" id="documentsTrackingInput" required />
+              </label>
+              <label>
+                <span data-i18n="documentsPassword">Documents Password</span>
+                <input type="password" id="documentsPasswordInput" required />
+              </label>
+            </div>
+            <button class="primary-btn" type="submit" data-i18n="viewDocuments">View Documents</button>
+          </form>
+
+          <div id="documentsResult" class="documents-list"></div>
+        </section>
+
         <section class="glass-card suggestions-section">
           <div class="suggestions-feature-card">
             <p class="card-label" data-i18n="suggestionsTitle">Suggestions and Feedback</p>
@@ -180,7 +206,29 @@
               </label>
               <label>
                 <span data-i18n="suggestionPhone">Phone Number</span>
-                <input type="text" id="suggestionPhoneInput" />
+                <div class="phone-input-row">
+                  <select id="suggestionCountryCodeInput" aria-label="Country code">
+                    <option value="20">+20 Egypt</option>
+                    <option value="966">+966 Saudi Arabia</option>
+                    <option value="971">+971 UAE</option>
+                    <option value="965">+965 Kuwait</option>
+                    <option value="974">+974 Qatar</option>
+                    <option value="973">+973 Bahrain</option>
+                    <option value="968">+968 Oman</option>
+                    <option value="962">+962 Jordan</option>
+                    <option value="961">+961 Lebanon</option>
+                    <option value="963">+963 Syria</option>
+                    <option value="964">+964 Iraq</option>
+                    <option value="212">+212 Morocco</option>
+                    <option value="213">+213 Algeria</option>
+                    <option value="216">+216 Tunisia</option>
+                    <option value="218">+218 Libya</option>
+                    <option value="249">+249 Sudan</option>
+                    <option value="1">+1 USA / Canada</option>
+                    <option value="44">+44 United Kingdom</option>
+                  </select>
+                  <input type="text" id="suggestionPhoneInput" />
+                </div>
               </label>
             </div>
             <label>

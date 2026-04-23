@@ -92,6 +92,24 @@ function createSqliteDatabase(options) {
       language TEXT NOT NULL DEFAULT 'ar',
       created_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS shipment_files (
+      id TEXT PRIMARY KEY,
+      tracking_number TEXT NOT NULL,
+      file_name TEXT NOT NULL,
+      mime_type TEXT NOT NULL DEFAULT 'application/octet-stream',
+      file_size INTEGER NOT NULL DEFAULT 0,
+      content_base64 TEXT NOT NULL,
+      uploaded_at TEXT NOT NULL,
+      FOREIGN KEY (tracking_number) REFERENCES shipments(tracking_number) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS shipment_file_access (
+      tracking_number TEXT PRIMARY KEY,
+      password_hash TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (tracking_number) REFERENCES shipments(tracking_number) ON DELETE CASCADE
+    );
   `);
 
   const shipmentColumns = db.prepare("PRAGMA table_info(shipments)").all();
@@ -334,6 +352,54 @@ function createSqliteDatabase(options) {
   `);
 
   const deleteShipmentStatement = db.prepare("DELETE FROM shipments WHERE tracking_number = ?");
+  const filesByShipmentQuery = db.prepare(`
+    SELECT
+      id,
+      tracking_number,
+      file_name,
+      mime_type,
+      file_size,
+      uploaded_at
+    FROM shipment_files
+    WHERE tracking_number = ?
+    ORDER BY datetime(uploaded_at) DESC, file_name ASC
+  `);
+  const fileByIdQuery = db.prepare(`
+    SELECT
+      id,
+      tracking_number,
+      file_name,
+      mime_type,
+      file_size,
+      content_base64,
+      uploaded_at
+    FROM shipment_files
+    WHERE tracking_number = ? AND id = ?
+  `);
+  const deleteFilesByShipment = db.prepare("DELETE FROM shipment_files WHERE tracking_number = ?");
+  const fileAccessQuery = db.prepare(`
+    SELECT tracking_number, password_hash, updated_at
+    FROM shipment_file_access
+    WHERE tracking_number = ?
+  `);
+  const upsertFileAccess = db.prepare(`
+    INSERT INTO shipment_file_access (tracking_number, password_hash, updated_at)
+    VALUES (?, ?, ?)
+    ON CONFLICT(tracking_number) DO UPDATE SET
+      password_hash = excluded.password_hash,
+      updated_at = excluded.updated_at
+  `);
+  const insertShipmentFile = db.prepare(`
+    INSERT INTO shipment_files (
+      id,
+      tracking_number,
+      file_name,
+      mime_type,
+      file_size,
+      content_base64,
+      uploaded_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
 
   return {
     getAllShipments() {
@@ -527,6 +593,59 @@ function createSqliteDatabase(options) {
       });
 
       return suggestion;
+    },
+
+    getShipmentFiles(trackingNumber) {
+      return filesByShipmentQuery.all(trackingNumber);
+    },
+
+    getShipmentFile(trackingNumber, fileId) {
+      return fileByIdQuery.get(trackingNumber, fileId) || null;
+    },
+
+    getShipmentFileAccess(trackingNumber) {
+      return fileAccessQuery.get(trackingNumber) || null;
+    },
+
+    replaceShipmentFiles(trackingNumber, files, passwordHash) {
+      const current = this.getShipment(trackingNumber);
+      if (!current) {
+        return null;
+      }
+
+      const uploadedAt = new Date().toISOString();
+      const cleanFiles = files.map((file) => ({
+        id: crypto.randomUUID(),
+        tracking_number: trackingNumber,
+        file_name: String(file.file_name || "shipment-file").trim(),
+        mime_type: String(file.mime_type || "application/octet-stream").trim(),
+        file_size: Number(file.file_size || 0),
+        content_base64: String(file.content_base64 || "").trim(),
+        uploaded_at: uploadedAt
+      }));
+
+      runInTransaction(() => {
+        deleteFilesByShipment.run(trackingNumber);
+        upsertFileAccess.run(trackingNumber, passwordHash, uploadedAt);
+        cleanFiles.forEach((file) => {
+          insertShipmentFile.run(
+            file.id,
+            file.tracking_number,
+            file.file_name,
+            file.mime_type,
+            file.file_size,
+            file.content_base64,
+            file.uploaded_at
+          );
+        });
+      });
+
+      appendAuditLog("shipment.files.replaced", {
+        tracking_number: trackingNumber,
+        files_count: cleanFiles.length
+      });
+
+      return this.getShipmentFiles(trackingNumber);
     }
   };
 }

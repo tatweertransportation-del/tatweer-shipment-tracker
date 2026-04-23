@@ -449,6 +449,85 @@ function createSupabaseDatabase(options) {
     return suggestion;
   }
 
+  async function getShipmentFiles(trackingNumber) {
+    return request("GET", "shipment_files", {
+      query: {
+        select: "id,tracking_number,file_name,mime_type,file_size,uploaded_at",
+        tracking_number: `eq.${trackingNumber}`,
+        order: "uploaded_at.desc"
+      }
+    });
+  }
+
+  async function getShipmentFile(trackingNumber, fileId) {
+    const rows = await request("GET", "shipment_files", {
+      query: {
+        select: "id,tracking_number,file_name,mime_type,file_size,content_base64,uploaded_at",
+        tracking_number: `eq.${trackingNumber}`,
+        id: `eq.${fileId}`,
+        limit: "1"
+      }
+    });
+
+    return rows[0] || null;
+  }
+
+  async function getShipmentFileAccess(trackingNumber) {
+    const rows = await request("GET", "shipment_file_access", {
+      query: {
+        select: "tracking_number,password_hash,updated_at",
+        tracking_number: `eq.${trackingNumber}`,
+        limit: "1"
+      }
+    });
+
+    return rows[0] || null;
+  }
+
+  async function replaceShipmentFiles(trackingNumber, files, passwordHash) {
+    const current = await getShipment(trackingNumber);
+    if (!current) {
+      return null;
+    }
+
+    const uploadedAt = new Date().toISOString();
+    await request("DELETE", "shipment_files", {
+      query: { tracking_number: `eq.${trackingNumber}` },
+      prefer: "return=minimal"
+    });
+
+    await request("POST", "shipment_file_access", {
+      body: {
+        tracking_number: trackingNumber,
+        password_hash: passwordHash,
+        updated_at: uploadedAt
+      },
+      prefer: "resolution=merge-duplicates,return=minimal"
+    });
+
+    if (files.length) {
+      await request("POST", "shipment_files", {
+        body: files.map((file) => ({
+          id: crypto.randomUUID(),
+          tracking_number: trackingNumber,
+          file_name: String(file.file_name || "shipment-file").trim(),
+          mime_type: String(file.mime_type || "application/octet-stream").trim(),
+          file_size: Number(file.file_size || 0),
+          content_base64: String(file.content_base64 || "").trim(),
+          uploaded_at: uploadedAt
+        })),
+        prefer: "return=minimal"
+      });
+    }
+
+    appendAuditLog("shipment.files.replaced", {
+      tracking_number: trackingNumber,
+      files_count: files.length
+    });
+
+    return getShipmentFiles(trackingNumber);
+  }
+
   return {
     getAllShipments,
     getShipment,
@@ -456,7 +535,11 @@ function createSupabaseDatabase(options) {
     updateShipment,
     deleteShipment,
     getAllSuggestions,
-    createSuggestion
+    createSuggestion,
+    getShipmentFiles,
+    getShipmentFile,
+    getShipmentFileAccess,
+    replaceShipmentFiles
   };
 }
 

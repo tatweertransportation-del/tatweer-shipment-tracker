@@ -26,6 +26,22 @@ const TRANSLATIONS = {
     trackingNotFoundTitle: "We could not find this shipment.",
     trackingNotFoundText: "Please check the tracking number or contact our support team on WhatsApp for help.",
     contactSupportNow: "Contact support now",
+    documentsTitle: "Shipment Documents",
+    documentsHeadline: "View your shipment papers securely",
+    documentsText:
+      "Enter your tracking number and the documents password sent by Tatweer to view shipment files.",
+    documentsPassword: "Documents Password",
+    viewDocuments: "View Documents",
+    noDocuments: "No shipment documents are available yet.",
+    documentsError: "Unable to load shipment documents.",
+    downloadFile: "Open File",
+    adminDocumentsTitle: "Shipment Documents",
+    adminDocumentsSubtitle: "Upload or replace customer shipment papers",
+    shipmentFiles: "Shipment Files",
+    sendFilesWhatsapp: "Open WhatsApp message with documents password",
+    saveShipmentFiles: "Save Shipment Files",
+    shipmentFilesSaved: "Shipment files saved successfully.",
+    shipmentFilesError: "Unable to save shipment files.",
     promoFastDelivery: "⚡ Fast delivery",
     promoLiveTracking: "📍 Live shipment tracking",
     promoSafeTransport: "🛡️ Safe transport",
@@ -87,6 +103,8 @@ const TRANSLATIONS = {
     statusUpdates: "Status Updates",
     updateShipment: "Update Shipment Status",
     selectShipment: "Select Shipment",
+    manualTrackingNumber: "Or Type Tracking Number",
+    manualTrackingPlaceholder: "Leave empty to use the selected shipment",
     customArabicStatus: "Custom Arabic Status",
     customEnglishStatus: "Custom English Status",
     shipmentLocation: "Location",
@@ -156,6 +174,21 @@ const TRANSLATIONS = {
     trackingNotFoundTitle: "لم نتمكن من العثور على هذه الشحنة.",
     trackingNotFoundText: "يرجى التأكد من رقم الشحنة أو التواصل مع فريق الدعم عبر واتساب للمساعدة.",
     contactSupportNow: "تواصل مع الدعم الآن",
+    documentsTitle: "أوراق الشحنة",
+    documentsHeadline: "اطلع على أوراق شحنتك بأمان",
+    documentsText: "أدخل رقم الشحنة وكلمة مرور الأوراق المرسلة من تطوير لعرض الملفات.",
+    documentsPassword: "كلمة مرور الأوراق",
+    viewDocuments: "عرض الأوراق",
+    noDocuments: "لا توجد أوراق متاحة للشحنة حتى الآن.",
+    documentsError: "تعذر تحميل أوراق الشحنة.",
+    downloadFile: "فتح الملف",
+    adminDocumentsTitle: "أوراق الشحنة",
+    adminDocumentsSubtitle: "رفع أو استبدال أوراق الشحنة للعميل",
+    shipmentFiles: "ملفات الشحنة",
+    sendFilesWhatsapp: "فتح رسالة واتساب بكلمة مرور الأوراق",
+    saveShipmentFiles: "حفظ ملفات الشحنة",
+    shipmentFilesSaved: "تم حفظ ملفات الشحنة بنجاح.",
+    shipmentFilesError: "تعذر حفظ ملفات الشحنة.",
     promoFastDelivery: "⚡ سرعة في التسليم",
     promoLiveTracking: "📍 متابعة مباشرة للشحنة",
     promoSafeTransport: "🛡️ نقل آمن وموثوق",
@@ -216,6 +249,8 @@ const TRANSLATIONS = {
     statusUpdates: "تحديثات الحالة",
     updateShipment: "تحديث حالة الشحنة",
     selectShipment: "اختر الشحنة",
+    manualTrackingNumber: "أو اكتب رقم الشحنة",
+    manualTrackingPlaceholder: "اتركها فارغة لاستخدام الشحنة المختارة من القائمة",
     customArabicStatus: "حالة مخصصة بالعربية",
     customEnglishStatus: "حالة مخصصة بالإنجليزية",
     shipmentLocation: "الموقع",
@@ -290,6 +325,10 @@ function buildApiUrl(path) {
   return `${resolveApiBaseUrl()}${normalizedPath}`;
 }
 
+function buildFileUrl(path) {
+  return buildApiUrl(path);
+}
+
 function buildTrackingPageLink(trackingNumber) {
   const baseUrl = normalizeBaseUrl(APP_CONFIG.APP_BASE_URL) || window.location.origin;
   return `${baseUrl}/?tracking=${encodeURIComponent(trackingNumber)}`;
@@ -330,6 +369,32 @@ function normalizeWhatsappContactNumber(phoneNumber) {
     return `2${cleaned}`;
   }
   return cleaned;
+}
+
+function normalizePhoneWithCountryCode(countryCode, phoneNumber) {
+  const code = String(countryCode || "").replace(/[^\d]/g, "");
+  let phone = String(phoneNumber || "").replace(/[^\d]/g, "");
+  if (!phone) {
+    return "";
+  }
+
+  if (phone.startsWith("00")) {
+    phone = phone.slice(2);
+  }
+
+  if (phone.startsWith("+")) {
+    return phone.replace(/[^\d]/g, "");
+  }
+
+  if (code && phone.startsWith(code)) {
+    return phone;
+  }
+
+  if (phone.startsWith("0")) {
+    phone = phone.slice(1);
+  }
+
+  return `${code}${phone}`;
 }
 
 function getLatestShipmentLocation(shipment) {
@@ -606,6 +671,28 @@ async function api(path, options = {}) {
   return data;
 }
 
+async function fileToPayload(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      resolve({
+        file_name: file.name,
+        mime_type: file.type || "application/octet-stream",
+        file_size: file.size,
+        content_base64: result.split(",")[1] || ""
+      });
+    };
+    reader.onerror = () => reject(reader.error || new Error("Unable to read file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function buildCustomerFilesWhatsappLink(phoneNumber, message) {
+  const phone = normalizeWhatsappContactNumber(phoneNumber);
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+
 function renderTimeline(history = []) {
   const container = document.getElementById("timelineContainer");
   if (!container) {
@@ -694,6 +781,46 @@ function renderShipment(shipment) {
   renderTimeline(shipment.history || []);
 }
 
+function renderDocuments(files, trackingNumber, password) {
+  const container = document.getElementById("documentsResult");
+  if (!container) {
+    return;
+  }
+
+  if (!files.length) {
+    container.innerHTML = `<div class="empty-state">${t("noDocuments")}</div>`;
+    return;
+  }
+
+  container.innerHTML = files
+    .map((file) => {
+      const href = buildFileUrl(
+        `/api/shipment-files/${encodeURIComponent(trackingNumber)}/${encodeURIComponent(file.id)}?password=${encodeURIComponent(password)}`
+      );
+      return `
+        <article class="document-item">
+          <div>
+            <strong>${escapeHtml(file.file_name)}</strong>
+            <p>${escapeHtml(file.mime_type)} • ${Math.ceil(Number(file.file_size || 0) / 1024)} KB</p>
+          </div>
+          <a class="ghost-outline-btn" href="${href}" target="_blank" rel="noopener">${t("downloadFile")}</a>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+async function lookupDocuments(trackingNumber, password) {
+  const result = await api("/api/shipment-files/lookup", {
+    method: "POST",
+    body: JSON.stringify({
+      tracking_number: trackingNumber,
+      password
+    })
+  });
+  renderDocuments(result.files || [], result.tracking_number, password);
+}
+
 function renderShipmentNotFound(trackingNumber) {
   const headline = document.getElementById("trackingHeadline");
   const statusBadge = document.getElementById("statusBadge");
@@ -745,7 +872,10 @@ function bindGlobalControls() {
 async function submitSuggestion(form) {
   const payload = {
     name: document.getElementById("suggestionNameInput")?.value || "",
-    phone_number: document.getElementById("suggestionPhoneInput")?.value || "",
+    phone_number: normalizePhoneWithCountryCode(
+      document.getElementById("suggestionCountryCodeInput")?.value || "",
+      document.getElementById("suggestionPhoneInput")?.value || ""
+    ),
     tracking_number: document.getElementById("suggestionTrackingInput")?.value || "",
     message: document.getElementById("suggestionMessageInput")?.value || "",
     language: currentLanguage
@@ -816,6 +946,18 @@ function setupTrackingPage() {
     }
   });
 
+  document.getElementById("documentsLookupForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      await lookupDocuments(
+        document.getElementById("documentsTrackingInput").value,
+        document.getElementById("documentsPasswordInput").value
+      );
+    } catch (error) {
+      document.getElementById("documentsResult").innerHTML = `<div class="empty-state">${t("documentsError")}</div>`;
+    }
+  });
+
   document.getElementById("copyTrackingLinkBtn")?.addEventListener("click", (event) => {
     const trackingNumber = event.currentTarget.dataset.trackingNumber;
     if (trackingNumber) {
@@ -856,6 +998,10 @@ function setupTrackingPage() {
   const trackingFromUrl = params.get("tracking");
   if (trackingFromUrl) {
     document.getElementById("trackingInput").value = trackingFromUrl;
+    const documentsTrackingInput = document.getElementById("documentsTrackingInput");
+    if (documentsTrackingInput) {
+      documentsTrackingInput.value = trackingFromUrl;
+    }
     const suggestionTrackingInput = document.getElementById("suggestionTrackingInput");
     if (suggestionTrackingInput) {
       suggestionTrackingInput.value = trackingFromUrl;
@@ -888,25 +1034,35 @@ function setAdminView(isLoggedIn) {
 
 function renderShipmentOptions(shipments) {
   const select = document.getElementById("shipmentSelect");
-  if (!select) {
-    return;
-  }
+  const filesSelect = document.getElementById("filesShipmentSelect");
 
   const activeShipments = shipments.filter((shipment) => !isCompletedShipment(shipment));
 
-  if (!activeShipments.length) {
-    select.innerHTML = `<option value="">${t("noShipmentsToUpdate")}</option>`;
-    return;
+  if (select) {
+    if (!activeShipments.length) {
+      select.innerHTML = `<option value="">${t("noShipmentsToUpdate")}</option>`;
+    } else {
+      select.innerHTML = activeShipments
+        .map(
+          (shipment) =>
+            `<option value="${shipment.tracking_number}">${shipment.tracking_number} - ${
+              currentLanguage === "ar" ? shipment.arabic_status : shipment.english_status
+            }</option>`
+        )
+        .join("");
+    }
   }
 
-  select.innerHTML = activeShipments
-    .map(
-      (shipment) =>
-        `<option value="${shipment.tracking_number}">${shipment.tracking_number} - ${
-          currentLanguage === "ar" ? shipment.arabic_status : shipment.english_status
-        }</option>`
-    )
-    .join("");
+  if (filesSelect) {
+    filesSelect.innerHTML = shipments
+      .map(
+        (shipment) =>
+          `<option value="${shipment.tracking_number}">${shipment.tracking_number} - ${
+            currentLanguage === "ar" ? shipment.arabic_status : shipment.english_status
+          }</option>`
+      )
+      .join("");
+  }
 }
 
 function getSelectedShipment() {
@@ -1059,6 +1215,36 @@ async function deleteShipmentFromAdmin(trackingNumber) {
   }
 }
 
+async function saveShipmentFilesFromAdmin() {
+  const trackingNumber = document.getElementById("filesShipmentSelect").value;
+  const password = document.getElementById("filesPasswordInput").value.trim();
+  const input = document.getElementById("shipmentFilesInput");
+  const files = Array.from(input.files || []);
+
+  if (!trackingNumber || !password || !files.length) {
+    throw new Error("Missing files data");
+  }
+
+  const payloadFiles = await Promise.all(files.map(fileToPayload));
+  const result = await api(`/api/admin/shipment-files/${encodeURIComponent(trackingNumber)}`, {
+    method: "POST",
+    body: JSON.stringify({
+      password,
+      files: payloadFiles
+    })
+  });
+
+  if (document.getElementById("sendFilesWhatsappCheckbox")?.checked && result.phone_number) {
+    window.open(
+      buildCustomerFilesWhatsappLink(result.phone_number, result.whatsapp_message),
+      "_blank",
+      "noopener"
+    );
+  }
+
+  return result;
+}
+
 function setupAdminPage() {
   document.getElementById("loginForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -1099,6 +1285,18 @@ function setupAdminPage() {
 
   document.getElementById("shipmentSelect")?.addEventListener("change", () => {
     syncSelectedShipmentNotes();
+  });
+
+  document.getElementById("shipmentFilesForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      await saveShipmentFilesFromAdmin();
+      event.target.reset();
+      renderShipmentOptions(adminState.shipments);
+      notify(t("shipmentFilesSaved"));
+    } catch (error) {
+      notify(`${t("shipmentFilesError")} ${error.message}`);
+    }
   });
 
   document.getElementById("shipmentsTableBody")?.addEventListener("click", (event) => {
@@ -1142,7 +1340,8 @@ function setupAdminPage() {
 
   document.getElementById("updateForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const trackingNumber = document.getElementById("shipmentSelect").value;
+    const manualTrackingNumber = document.getElementById("manualUpdateTrackingInput").value.trim();
+    const trackingNumber = manualTrackingNumber || document.getElementById("shipmentSelect").value;
     if (!trackingNumber) {
       notify(t("noShipmentSelected"));
       return;

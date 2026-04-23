@@ -547,6 +547,34 @@ body.light-mode .status-badge {
   overflow: hidden;
 }
 
+.documents-section {
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+  margin-top: 20px;
+}
+
+.documents-list {
+  display: grid;
+  gap: 12px;
+}
+
+.document-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+
+.document-item p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
 .suggestions-section::before {
   content: "";
   position: absolute;
@@ -593,6 +621,12 @@ body.light-mode .status-badge {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.phone-input-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.45fr) minmax(0, 1fr);
+  gap: 10px;
 }
 
 .developer-btn {
@@ -789,5 +823,14 @@ tbody tr:hover {
 
   .form-row {
     grid-template-columns: 1fr;
+  }
+
+  .phone-input-row {
+    grid-template-columns: 1fr;
+  }
+
+  .document-item {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
