@@ -1,5 +1,12 @@
 const fs = require("fs");
 const crypto = require("crypto");
+const path = require("path");
+
+function ensureDir(dirPath) {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+}
 
 function readJsonArray(filePath) {
   if (!filePath || !fs.existsSync(filePath)) {
@@ -40,11 +47,16 @@ function createSupabaseDatabase(options) {
   } = options;
 
   const supabaseUrl = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  const serviceRoleKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SERVICE_KEY ||
+    "";
 
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error("Supabase environment variables are missing.");
   }
+
+  ensureDir(auditLogFile ? path.dirname(auditLogFile) : ".");
 
   if (!fs.existsSync(auditLogFile)) {
     fs.writeFileSync(auditLogFile, "", "utf8");
