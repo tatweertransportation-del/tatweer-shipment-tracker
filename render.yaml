@@ -10,7 +10,7 @@ services:
       - key: PORT
         value: 3000
       - key: STORAGE_DRIVER
-        value: sqlite
+        value: supabase
       - key: DATA_FILE_PATH
         value: ./data/shipments.json
       - key: SUGGESTIONS_FILE_PATH
@@ -19,5 +19,13 @@ services:
         value: ./data/tatweer-tracking.sqlite
       - key: AUDIT_LOG_FILE_PATH
         value: ./data/audit-log.jsonl
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: TRACKING_BASE_URL
+        value: ""
+      - key: ALLOWED_ORIGINS
+        value: ""
       - key: WHATSAPP_PROVIDER
         value: mock

@@ -19,7 +19,7 @@ const DATABASE_FILE = process.env.DATABASE_FILE_PATH
 const AUDIT_LOG_FILE = process.env.AUDIT_LOG_FILE_PATH
   ? path.resolve(process.env.AUDIT_LOG_FILE_PATH)
   : path.join(path.dirname(DATABASE_FILE), "audit-log.jsonl");
-const TRACKING_BASE_URL = process.env.TRACKING_BASE_URL || "";
+const TRACKING_BASE_URL = normalizeBaseUrl(process.env.TRACKING_BASE_URL);
 const DEFAULT_COUNTRY_CODE = process.env.DEFAULT_COUNTRY_CODE || "20";
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
   .split(",")
@@ -53,10 +53,23 @@ function loadEnvFile(filePath) {
 
     const key = trimmed.slice(0, separatorIndex).trim();
     const value = trimmed.slice(separatorIndex + 1).trim();
-    if (!(key in process.env)) {
+  if (!(key in process.env)) {
       process.env[key] = value;
     }
   });
+}
+
+function normalizeBaseUrl(value) {
+  return String(value || "").trim().replace(/\/+$/, "");
+}
+
+function isLocalhostUrl(value) {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch (error) {
+    return false;
+  }
 }
 
 function createSessionToken(username) {
@@ -106,7 +119,13 @@ function deriveRequestOrigin(req) {
 }
 
 function getPublicBaseUrl(req) {
-  return TRACKING_BASE_URL || deriveRequestOrigin(req);
+  const requestOrigin = deriveRequestOrigin(req);
+
+  if (TRACKING_BASE_URL && (!isLocalhostUrl(TRACKING_BASE_URL) || isLocalhostUrl(requestOrigin))) {
+    return TRACKING_BASE_URL;
+  }
+
+  return requestOrigin;
 }
 
 function buildTrackingLink(trackingNumber, req) {
@@ -609,5 +628,6 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   const startupBaseUrl = TRACKING_BASE_URL || `http://localhost:${PORT}`;
   console.log(`Shipment tracking system is running at ${startupBaseUrl}`);
+  console.log(`Public tracking links: ${TRACKING_BASE_URL || "auto-detected from the request host"}`);
   console.log(`Database file: ${DATABASE_FILE}`);
 });
