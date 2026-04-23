@@ -90,6 +90,7 @@ const TRANSLATIONS = {
     internalNotes: "Internal Notes",
     internalNotesPlaceholder: "Private notes for the operations team only.",
     sendWhatsapp: "Send WhatsApp Notification",
+    sendBilingualWhatsapp: "Send Arabic and English in one message",
     saveUpdate: "Save Update",
     allShipments: "All Shipments",
     liveShipmentList: "Live Shipment List",
@@ -214,6 +215,7 @@ const TRANSLATIONS = {
     internalNotes: "ملاحظات داخلية",
     internalNotesPlaceholder: "ملاحظات خاصة بفريق التشغيل فقط ولا تظهر للعميل.",
     sendWhatsapp: "إرسال إشعار واتساب",
+    sendBilingualWhatsapp: "إرسال الرسالة بالعربي والإنجليزي معًا",
     saveUpdate: "حفظ التحديث",
     allShipments: "كل الشحنات",
     liveShipmentList: "قائمة الشحنات المباشرة",
@@ -328,12 +330,11 @@ function getLatestShipmentLocation(shipment) {
   return String(lastEntry?.location || "").trim();
 }
 
-function buildAdminShipmentMessage(shipment, messageType = "update") {
-  const isEnglish = (shipment.preferred_language || "ar") === "en";
+function buildAdminShipmentMessage(shipment, messageType = "update", language = shipment.preferred_language || "ar") {
+  const isEnglish = language === "en";
   const location = getLatestShipmentLocation(shipment);
   const locationLineEn = location ? `Current Location: ${location}\n` : "";
   const locationLineAr = location ? `الموقع الحالي: ${location}\n` : "";
-  const supportPhone = APP_CONFIG.SUPPORT_WHATSAPP_NUMBER || "01019552952";
 
   if (isEnglish) {
     const title = messageType === "create" ? "Your shipment has been registered." : "Your shipment has a new update.";
@@ -349,8 +350,8 @@ ${locationLineEn}Estimated Delivery: ${formatDate(shipment.delivery_date)}
 Track your shipment here:
 ${shipment.tracking_link}
 
-Support: ${supportPhone}
-Thank you for choosing Tatweer.`;
+At Tatweer, we deliver with care, accuracy, and commitment.
+Thank you for choosing us.`;
   }
 
   const title = messageType === "create" ? "تم تسجيل شحنتكم بنجاح." : "يوجد تحديث جديد على شحنتكم.";
@@ -366,17 +367,30 @@ ${locationLineAr}موعد التسليم المتوقع: ${formatDate(shipment.d
 رابط التتبع:
 ${shipment.tracking_link}
 
-الدعم: ${supportPhone}
-نشكركم على ثقتكم في تطوير.`;
+في تطوير، نلتزم بالدقة والسرعة والاهتمام بكل تفاصيل شحنتكم.
+نشكركم على ثقتكم بنا.`;
 }
 
-function openCustomerUpdateWhatsapp(shipment, messageType = "update") {
+function buildBilingualAdminShipmentMessage(shipment, messageType = "update") {
+  const arabicMessage = buildAdminShipmentMessage(shipment, messageType, "ar");
+  const englishMessage = buildAdminShipmentMessage(shipment, messageType, "en");
+  return `${arabicMessage}
+
+----------------------------------------
+----------------------------------------
+
+${englishMessage}`;
+}
+
+function openCustomerUpdateWhatsapp(shipment, messageType = "update", bilingual = false) {
   const customerPhone = normalizeWhatsappContactNumber(shipment.phone_number);
   if (!customerPhone) {
     return false;
   }
 
-  const message = buildAdminShipmentMessage(shipment, messageType);
+  const message = bilingual
+    ? buildBilingualAdminShipmentMessage(shipment, messageType)
+    : buildAdminShipmentMessage(shipment, messageType);
   const whatsappUrl = `https://wa.me/${customerPhone}?text=${encodeURIComponent(message)}`;
   window.open(whatsappUrl, "_blank", "noopener");
   return true;
@@ -1111,7 +1125,7 @@ function setupAdminPage() {
       document.getElementById("preferredLanguageInput").value = "ar";
       await loadAdminData();
 
-      const opened = createdShipment && openCustomerUpdateWhatsapp(createdShipment, "create");
+      const opened = createdShipment && openCustomerUpdateWhatsapp(createdShipment, "create", false);
       notify(`${t("addShipmentSuccess")}${opened ? ` ${t("whatsappOpened")}` : ""}`);
     } catch (error) {
       notify(`${t("addShipmentError")} ${error.message}`);
@@ -1127,6 +1141,7 @@ function setupAdminPage() {
     }
 
     const sendWhatsapp = document.getElementById("sendWhatsappCheckbox").checked;
+    const sendBilingualWhatsapp = document.getElementById("bilingualWhatsappCheckbox").checked;
 
     try {
       const result = await api(`/api/shipments/${encodeURIComponent(trackingNumber)}`, {
@@ -1143,7 +1158,7 @@ function setupAdminPage() {
 
       await loadAdminData();
       const opened =
-        sendWhatsapp && result.shipment && openCustomerUpdateWhatsapp(result.shipment, "update");
+        sendWhatsapp && result.shipment && openCustomerUpdateWhatsapp(result.shipment, "update", sendBilingualWhatsapp);
       notify(`${t("updateShipmentSuccess")}${opened ? ` ${t("whatsappOpened")}` : ""}`);
     } catch (error) {
       notify(`${t("updateShipmentError")} ${error.message}`);
