@@ -340,7 +340,7 @@ function createSupabaseDatabase(options) {
     await request("POST", "shipment_updates", {
       body: {
         id: crypto.randomUUID(),
-        tracking_number,
+        tracking_number: trackingNumber,
         arabic_status: nextShipment.arabic_status,
         english_status: nextShipment.english_status,
         timestamp,
@@ -351,7 +351,7 @@ function createSupabaseDatabase(options) {
     });
 
     appendAuditLog("shipment.updated", {
-      tracking_number,
+      tracking_number: trackingNumber,
       arabic_status: nextShipment.arabic_status,
       english_status: nextShipment.english_status,
       location: payload.location || "",
