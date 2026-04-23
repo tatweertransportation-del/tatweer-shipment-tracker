@@ -112,6 +112,14 @@
                   <span data-i18n="deliveryDate">Estimated Delivery Date</span>
                   <input type="date" id="deliveryDateInput" required />
                 </label>
+                <label>
+                  <span data-i18n="progressPercent">Progress %</span>
+                  <input type="number" id="createProgressInput" min="0" max="100" value="25" />
+                </label>
+                <label class="checkbox-row">
+                  <input type="checkbox" id="createBilingualWhatsappCheckbox" />
+                  <span data-i18n="sendBilingualWhatsapp">Send Arabic and English in one message</span>
+                </label>
                 <button class="primary-btn" type="submit" data-i18n="addShipment">Add Shipment</button>
               </form>
             </article>

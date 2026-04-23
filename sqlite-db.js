@@ -454,6 +454,10 @@ function createSqliteDatabase(options) {
         preferred_language: payload.preferred_language === "en" ? "en" : "ar",
         internal_notes: String(payload.internal_notes || "").trim()
       };
+      const initialProgress = Math.max(
+        0,
+        Math.min(100, Number.isFinite(Number(payload.progress)) ? Number(payload.progress) : 25)
+      );
 
       const history = [
         {
@@ -463,7 +467,7 @@ function createSqliteDatabase(options) {
           english_status: "Shipment Created",
           timestamp,
           location: "Warehouse",
-          progress: 10
+          progress: Math.min(10, initialProgress)
         },
         {
           id: crypto.randomUUID(),
@@ -472,7 +476,7 @@ function createSqliteDatabase(options) {
           english_status: shipment.english_status,
           timestamp,
           location: "",
-          progress: 25
+          progress: initialProgress
         }
       ];
 

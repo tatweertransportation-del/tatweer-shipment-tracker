@@ -1065,7 +1065,8 @@ const server = http.createServer(async (req, res) => {
         arabic_status,
         english_status,
         delivery_date,
-        preferred_language
+        preferred_language,
+        progress
       } = await readRequestBody(req);
 
       if (!tracking_number || !phone_number || !arabic_status || !english_status || !delivery_date) {
@@ -1085,7 +1086,8 @@ const server = http.createServer(async (req, res) => {
         arabic_status,
         english_status,
         delivery_date,
-        preferred_language
+        preferred_language,
+        progress
       });
 
       sendJson(res, 201, withDerivedFields(shipment, req));

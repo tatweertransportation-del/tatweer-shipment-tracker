@@ -1723,15 +1723,19 @@ function setupAdminPage() {
           arabic_status: document.getElementById("arabicStatusInput").value,
           english_status: document.getElementById("englishStatusInput").value,
           preferred_language: document.getElementById("preferredLanguageInput").value,
-          delivery_date: document.getElementById("deliveryDateInput").value
+          delivery_date: document.getElementById("deliveryDateInput").value,
+          progress: document.getElementById("createProgressInput").value
         })
       });
 
       event.target.reset();
       document.getElementById("preferredLanguageInput").value = "ar";
+      document.getElementById("createProgressInput").value = "25";
       await loadAdminData();
 
-      const opened = createdShipment && openCustomerUpdateWhatsapp(createdShipment, "create", false);
+      const createBilingualWhatsapp = document.getElementById("createBilingualWhatsappCheckbox").checked;
+      const opened =
+        createdShipment && openCustomerUpdateWhatsapp(createdShipment, "create", createBilingualWhatsapp);
       notify(`${t("addShipmentSuccess")}${opened ? ` ${t("whatsappOpened")}` : ""}`);
     } catch (error) {
       notify(`${t("addShipmentError")} ${error.message}`);
