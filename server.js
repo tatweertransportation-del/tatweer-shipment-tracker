@@ -450,6 +450,48 @@ ${documentsLink}
 شكرًا لاختياركم تطوير للخدمات اللوجستية.`;
 }
 
+function buildShipmentDocumentsWhatsappMessage(trackingNumber, password, req, language = "ar") {
+  const documentsParams = new URLSearchParams({ documents: trackingNumber });
+  if (password) {
+    documentsParams.set("password", password);
+  }
+  const documentsLink = `${getPublicBaseUrl(req)}/?${documentsParams.toString()}`;
+
+  if (language === "en") {
+    return `Tatweer Logistics Services
+
+Dear customer,
+
+Your shipment documents are now available on Tatweer Tracking System.
+
+Shipment Number: ${trackingNumber}
+Documents Password: ${password}
+
+Open this secure link to view or download your shipment documents:
+${documentsLink}
+
+Important: This password is your responsibility. Please do not share it with anyone to protect your shipment papers and keep your personal data confidential.
+
+Thank you for choosing Tatweer Logistics Services.`;
+  }
+
+  return `\u062a\u0637\u0648\u064a\u0631 \u0644\u0644\u062e\u062f\u0645\u0627\u062a \u0627\u0644\u0644\u0648\u062c\u0633\u062a\u064a\u0629
+
+\u0639\u0632\u064a\u0632\u0646\u0627 \u0627\u0644\u0639\u0645\u064a\u0644\u060c
+
+\u0646\u0648\u062f \u0625\u0628\u0644\u0627\u063a\u0643\u0645 \u0628\u0623\u0646 \u0623\u0648\u0631\u0627\u0642 \u0627\u0644\u0634\u062d\u0646\u0629 \u0623\u0635\u0628\u062d\u062a \u0645\u062a\u0627\u062d\u0629 \u0627\u0644\u0622\u0646 \u0639\u0644\u0649 \u0646\u0638\u0627\u0645 Tatweer Tracking System.
+
+\u0631\u0642\u0645 \u0627\u0644\u0634\u062d\u0646\u0629: ${trackingNumber}
+\u0643\u0644\u0645\u0629 \u0645\u0631\u0648\u0631 \u0627\u0644\u0623\u0648\u0631\u0627\u0642: ${password}
+
+\u0627\u0641\u062a\u062d \u0647\u0630\u0627 \u0627\u0644\u0631\u0627\u0628\u0637 \u0627\u0644\u0622\u0645\u0646 \u0644\u0639\u0631\u0636 \u0623\u0648 \u062a\u062d\u0645\u064a\u0644 \u0623\u0648\u0631\u0627\u0642 \u0627\u0644\u0634\u062d\u0646\u0629:
+${documentsLink}
+
+\u0647\u0627\u0645: \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u0647\u064a \u0645\u0633\u0624\u0648\u0644\u064a\u062a\u0643\u060c \u064a\u0631\u062c\u0649 \u0639\u062f\u0645 \u0645\u0634\u0627\u0631\u0643\u062a\u0647\u0627 \u0645\u0639 \u0623\u064a \u0634\u062e\u0635 \u062d\u0641\u0627\u0638\u064b\u0627 \u0639\u0644\u0649 \u0623\u0648\u0631\u0627\u0642\u0643 \u0648\u0633\u0631\u064a\u0629 \u0628\u064a\u0627\u0646\u0627\u062a\u0643.
+
+\u0634\u0643\u0631\u064b\u0627 \u0644\u0627\u062e\u062a\u064a\u0627\u0631\u0643\u0645 \u062a\u0637\u0648\u064a\u0631 \u0644\u0644\u062e\u062f\u0645\u0627\u062a \u0627\u0644\u0644\u0648\u062c\u0633\u062a\u064a\u0629.`;
+}
+
 function redirect(res, location) {
   res.writeHead(302, {
     Location: location,
@@ -932,11 +974,13 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
+      const messagePassword = password || currentAccess?.password_value || "";
       const cleanFiles = files.map(sanitizeUploadedFile);
       const savedFiles = await database.replaceShipmentFiles(
         trackingNumber,
         cleanFiles,
-        password ? hashFilePassword(trackingNumber, password) : null
+        password ? hashFilePassword(trackingNumber, password) : null,
+        password
       );
 
       if (!savedFiles) {
@@ -949,7 +993,7 @@ const server = http.createServer(async (req, res) => {
         files: savedFiles,
         whatsapp_message: buildShipmentDocumentsWhatsappMessage(
           trackingNumber,
-          password,
+          messagePassword,
           req,
           shipment?.preferred_language || "ar"
         ),

@@ -485,7 +485,7 @@ function createSupabaseDatabase(options) {
   async function getShipmentFileAccess(trackingNumber) {
     const rows = await request("GET", "shipment_file_access", {
       query: {
-        select: "tracking_number,password_hash,updated_at",
+        select: "*",
         tracking_number: `eq.${trackingNumber}`,
         limit: "1"
       }
@@ -494,7 +494,7 @@ function createSupabaseDatabase(options) {
     return rows[0] || null;
   }
 
-  async function replaceShipmentFiles(trackingNumber, files, passwordHash) {
+  async function replaceShipmentFiles(trackingNumber, files, passwordHash, passwordValue = "") {
     const current = await getShipment(trackingNumber);
     if (!current) {
       return null;
@@ -507,6 +507,7 @@ function createSupabaseDatabase(options) {
         body: {
           tracking_number: trackingNumber,
           password_hash: passwordHash,
+          password_value: String(passwordValue || ""),
           updated_at: uploadedAt
         },
         prefer: "resolution=merge-duplicates,return=minimal"

@@ -14,8 +14,12 @@ create table if not exists public.shipment_files (
 create table if not exists public.shipment_file_access (
   tracking_number text primary key references public.shipments(tracking_number) on delete cascade,
   password_hash text not null,
+  password_value text not null default '',
   updated_at timestamptz not null
 );
+
+alter table public.shipment_file_access
+add column if not exists password_value text not null default '';
 
 create table if not exists public.shipment_ratings (
   id uuid primary key,

@@ -1205,7 +1205,9 @@ function setupTrackingPage() {
   });
 
   const params = new URLSearchParams(window.location.search);
-  const trackingFromUrl = params.get("tracking");
+  const documentsFromUrl = params.get("documents");
+  const documentsPasswordFromUrl = params.get("password") || params.get("documents_password");
+  const trackingFromUrl = params.get("tracking") || documentsFromUrl;
   if (trackingFromUrl) {
     document.getElementById("trackingInput").value = trackingFromUrl;
     const documentsTrackingInput = document.getElementById("documentsTrackingInput");
@@ -1223,6 +1225,22 @@ function setupTrackingPage() {
     fetchShipment(trackingFromUrl).catch(() => {
       renderShipmentNotFound(trackingFromUrl);
     });
+  }
+
+  if (documentsFromUrl) {
+    const documentsTrackingInput = document.getElementById("documentsTrackingInput");
+    const documentsPasswordInput = document.getElementById("documentsPasswordInput");
+    if (documentsTrackingInput) {
+      documentsTrackingInput.value = documentsFromUrl;
+    }
+    if (documentsPasswordInput && documentsPasswordFromUrl) {
+      documentsPasswordInput.value = documentsPasswordFromUrl;
+    }
+    if (documentsPasswordFromUrl) {
+      lookupDocuments(documentsFromUrl, documentsPasswordFromUrl).catch(() => {
+        document.getElementById("documentsResult").innerHTML = `<div class="empty-state">${t("documentsError")}</div>`;
+      });
+    }
   }
 }
 

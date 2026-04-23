@@ -107,6 +107,7 @@ function createSqliteDatabase(options) {
     CREATE TABLE IF NOT EXISTS shipment_file_access (
       tracking_number TEXT PRIMARY KEY,
       password_hash TEXT NOT NULL,
+      password_value TEXT NOT NULL DEFAULT '',
       updated_at TEXT NOT NULL,
       FOREIGN KEY (tracking_number) REFERENCES shipments(tracking_number) ON DELETE CASCADE
     );
@@ -125,6 +126,11 @@ function createSqliteDatabase(options) {
   const shipmentColumns = db.prepare("PRAGMA table_info(shipments)").all();
   if (!shipmentColumns.some((column) => column.name === "internal_notes")) {
     db.exec("ALTER TABLE shipments ADD COLUMN internal_notes TEXT NOT NULL DEFAULT ''");
+  }
+
+  const fileAccessColumns = db.prepare("PRAGMA table_info(shipment_file_access)").all();
+  if (!fileAccessColumns.some((column) => column.name === "password_value")) {
+    db.exec("ALTER TABLE shipment_file_access ADD COLUMN password_value TEXT NOT NULL DEFAULT ''");
   }
 
   const countShipments = db.prepare("SELECT COUNT(*) AS count FROM shipments");
@@ -388,15 +394,16 @@ function createSqliteDatabase(options) {
   `);
   const deleteShipmentFileById = db.prepare("DELETE FROM shipment_files WHERE tracking_number = ? AND id = ?");
   const fileAccessQuery = db.prepare(`
-    SELECT tracking_number, password_hash, updated_at
+    SELECT tracking_number, password_hash, password_value, updated_at
     FROM shipment_file_access
     WHERE tracking_number = ?
   `);
   const upsertFileAccess = db.prepare(`
-    INSERT INTO shipment_file_access (tracking_number, password_hash, updated_at)
-    VALUES (?, ?, ?)
+    INSERT INTO shipment_file_access (tracking_number, password_hash, password_value, updated_at)
+    VALUES (?, ?, ?, ?)
     ON CONFLICT(tracking_number) DO UPDATE SET
       password_hash = excluded.password_hash,
+      password_value = excluded.password_value,
       updated_at = excluded.updated_at
   `);
   const insertShipmentFile = db.prepare(`
@@ -632,7 +639,7 @@ function createSqliteDatabase(options) {
       return fileAccessQuery.get(trackingNumber) || null;
     },
 
-    replaceShipmentFiles(trackingNumber, files, passwordHash) {
+    replaceShipmentFiles(trackingNumber, files, passwordHash, passwordValue = "") {
       const current = this.getShipment(trackingNumber);
       if (!current) {
         return null;
@@ -651,7 +658,7 @@ function createSqliteDatabase(options) {
 
       runInTransaction(() => {
         if (passwordHash) {
-          upsertFileAccess.run(trackingNumber, passwordHash, uploadedAt);
+          upsertFileAccess.run(trackingNumber, passwordHash, String(passwordValue || ""), uploadedAt);
         }
         cleanFiles.forEach((file) => {
           insertShipmentFile.run(
