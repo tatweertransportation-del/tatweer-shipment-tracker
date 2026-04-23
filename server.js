@@ -153,7 +153,7 @@ function getPublicBaseUrl(req) {
 
 function buildTrackingLink(trackingNumber, req) {
   const encoded = encodeURIComponent(trackingNumber);
-  return `${getPublicBaseUrl(req)}/index.html?tracking=${encoded}`;
+  return `${getPublicBaseUrl(req)}/?tracking=${encoded}`;
 }
 
 function computeProgress(history = []) {
@@ -220,6 +220,14 @@ function sendText(res, statusCode, body, contentType = "text/plain; charset=utf-
     "Content-Length": Buffer.byteLength(body)
   });
   res.end(body);
+}
+
+function redirect(res, location) {
+  res.writeHead(302, {
+    Location: location,
+    "Cache-Control": "no-store"
+  });
+  res.end();
 }
 
 function setCorsHeaders(req, res) {
@@ -681,7 +689,12 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET") {
-      if (pathname === "/" || pathname === "/index.html") {
+      if (pathname === "/index.html") {
+        redirect(res, `/${requestUrl.search}`);
+        return;
+      }
+
+      if (pathname === "/") {
         serveStaticAsset(res, "index.html");
         return;
       }

@@ -282,7 +282,7 @@ function buildApiUrl(path) {
 
 function buildTrackingPageLink(trackingNumber) {
   const baseUrl = normalizeBaseUrl(APP_CONFIG.APP_BASE_URL) || window.location.origin;
-  return `${baseUrl}/index.html?tracking=${encodeURIComponent(trackingNumber)}`;
+  return `${baseUrl}/?tracking=${encodeURIComponent(trackingNumber)}`;
 }
 
 async function copyTextToClipboard(text) {
