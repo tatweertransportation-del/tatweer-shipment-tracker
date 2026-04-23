@@ -122,11 +122,12 @@ body[dir="rtl"] .card-label {
 }
 
 .brand-logo {
-  width: clamp(92px, 10vw, 128px);
-  height: clamp(92px, 10vw, 128px);
+  width: clamp(190px, 24vw, 320px);
+  height: auto;
+  max-height: 118px;
   display: block;
-  object-fit: cover;
-  border-radius: 24px;
+  object-fit: contain;
+  border-radius: 0;
   filter: drop-shadow(0 8px 20px rgba(16, 10, 9, 0.24));
 }
 
@@ -206,6 +207,8 @@ body[dir="rtl"] .brand-subtitle {
 .whatsapp-btn {
   padding: 14px 18px;
   font-weight: 700;
+  position: relative;
+  z-index: 2;
 }
 
 .primary-btn {
@@ -273,6 +276,15 @@ body[dir="rtl"] .brand-subtitle {
   height: 220px;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(243, 195, 170, 0.24), transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-copy,
+.tracking-form,
+.status-chips {
+  position: relative;
+  z-index: 1;
 }
 
 .pill {
@@ -307,8 +319,16 @@ body[dir="rtl"] .brand-subtitle {
   margin-bottom: 20px;
 }
 
+.tracking-form .primary-btn {
+  flex: 0 0 auto;
+  min-width: 170px;
+  min-height: 52px;
+}
+
 .input-row {
   gap: 12px;
+  position: relative;
+  z-index: 1;
 }
 
 input,
@@ -690,8 +710,8 @@ tbody tr:hover {
   }
 
   .brand-logo {
-    width: 96px;
-    height: 96px;
+    width: min(220px, 70vw);
+    max-height: 96px;
   }
 
   .card-head,
