@@ -498,6 +498,79 @@ function createSupabaseDatabase(options) {
     return rows[0] || null;
   }
 
+  async function getBackup() {
+    const shipments = await getAllShipments();
+    const [suggestions, ratings, shipmentFiles, fileAccess] = await Promise.all([
+      getAllSuggestions(),
+      getAllRatings(),
+      request("GET", "shipment_files", {
+        query: { select: "id,tracking_number,file_name,mime_type,file_size,content_base64,uploaded_at" }
+      }),
+      request("GET", "shipment_file_access", { query: { select: "*" } })
+    ]);
+    return {
+      version: 1,
+      exported_at: new Date().toISOString(),
+      shipments,
+      suggestions,
+      ratings,
+      shipment_files: shipmentFiles,
+      shipment_file_access: fileAccess
+    };
+  }
+
+  async function restoreBackup(backup) {
+    const shipments = Array.isArray(backup.shipments) ? backup.shipments : [];
+    const suggestions = Array.isArray(backup.suggestions) ? backup.suggestions : [];
+    const ratings = Array.isArray(backup.ratings) ? backup.ratings : [];
+    const shipmentFiles = Array.isArray(backup.shipment_files) ? backup.shipment_files : [];
+    const fileAccess = Array.isArray(backup.shipment_file_access) ? backup.shipment_file_access : [];
+
+    for (const table of ["shipment_ratings", "suggestions", "shipment_files", "shipment_file_access", "shipment_updates", "shipments"]) {
+      await request("DELETE", table, {
+        query: { id: table === "shipments" || table === "shipment_file_access" ? undefined : "not.is.null", tracking_number: table === "shipments" || table === "shipment_file_access" ? "not.is.null" : undefined },
+        prefer: "return=minimal"
+      });
+    }
+
+    if (shipments.length) {
+      await request("POST", "shipments", {
+        body: shipments.map((shipment) => ({
+          tracking_number: shipment.tracking_number,
+          phone_number: normalizePhoneNumber(shipment.phone_number, defaultCountryCode),
+          arabic_status: String(shipment.arabic_status || ""),
+          english_status: String(shipment.english_status || ""),
+          last_update_time: shipment.last_update_time || new Date().toISOString(),
+          delivery_date: shipment.delivery_date || "",
+          preferred_language: shipment.preferred_language === "en" ? "en" : "ar",
+          internal_notes: String(shipment.internal_notes || "")
+        })),
+        prefer: "return=minimal"
+      });
+      const updates = shipments.flatMap((shipment) =>
+        (shipment.history || []).map((update) => ({
+          id: update.id || crypto.randomUUID(),
+          tracking_number: shipment.tracking_number,
+          arabic_status: String(update.arabic_status || shipment.arabic_status || ""),
+          english_status: String(update.english_status || shipment.english_status || ""),
+          timestamp: update.timestamp || shipment.last_update_time || new Date().toISOString(),
+          location: String(update.location || ""),
+          progress: Number.isFinite(Number(update.progress)) ? Number(update.progress) : 0
+        }))
+      );
+      if (updates.length) {
+        await request("POST", "shipment_updates", { body: updates, prefer: "return=minimal" });
+      }
+    }
+    if (suggestions.length) await request("POST", "suggestions", { body: suggestions, prefer: "return=minimal" });
+    if (ratings.length) await request("POST", "shipment_ratings", { body: ratings, prefer: "return=minimal" });
+    if (fileAccess.length) await request("POST", "shipment_file_access", { body: fileAccess, prefer: "return=minimal" });
+    if (shipmentFiles.length) await request("POST", "shipment_files", { body: shipmentFiles, prefer: "return=minimal" });
+
+    appendAuditLog("backup.restored", { shipments_count: shipments.length });
+    return getBackup();
+  }
+
   async function replaceShipmentFiles(trackingNumber, files, passwordHash, passwordValue = "") {
     const current = await getShipment(trackingNumber);
     if (!current) {
@@ -610,6 +683,8 @@ function createSupabaseDatabase(options) {
   return {
     getAllShipments,
     getShipment,
+    getBackup,
+    restoreBackup,
     createShipment,
     updateShipment,
     deleteShipment,

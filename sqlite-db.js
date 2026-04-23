@@ -366,6 +366,11 @@ function createSqliteDatabase(options) {
       created_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
+  const suggestionsQuery = db.prepare(`
+    SELECT id, name, phone_number, tracking_number, message, language, created_at
+    FROM suggestions
+    ORDER BY datetime(created_at) DESC, rowid DESC
+  `);
 
   const deleteShipmentStatement = db.prepare("DELETE FROM shipments WHERE tracking_number = ?");
   const filesByShipmentQuery = db.prepare(`
@@ -392,7 +397,13 @@ function createSqliteDatabase(options) {
     FROM shipment_files
     WHERE tracking_number = ? AND id = ?
   `);
+  const allShipmentFilesQuery = db.prepare(`
+    SELECT id, tracking_number, file_name, mime_type, file_size, content_base64, uploaded_at
+    FROM shipment_files
+    ORDER BY datetime(uploaded_at) DESC, file_name ASC
+  `);
   const deleteShipmentFileById = db.prepare("DELETE FROM shipment_files WHERE tracking_number = ? AND id = ?");
+  const allFileAccessQuery = db.prepare("SELECT tracking_number, password_hash, password_value, updated_at FROM shipment_file_access");
   const fileAccessQuery = db.prepare(`
     SELECT tracking_number, password_hash, password_value, updated_at
     FROM shipment_file_access
@@ -440,6 +451,95 @@ function createSqliteDatabase(options) {
 
     getShipment(trackingNumber) {
       return hydrateShipment(shipmentQuery.get(trackingNumber));
+    },
+
+    getBackup() {
+      return {
+        version: 1,
+        exported_at: new Date().toISOString(),
+        shipments: this.getAllShipments(),
+        suggestions: suggestionsQuery.all(),
+        ratings: ratingsQuery.all(),
+        shipment_files: allShipmentFilesQuery.all(),
+        shipment_file_access: allFileAccessQuery.all()
+      };
+    },
+
+    restoreBackup(backup) {
+      const shipments = Array.isArray(backup.shipments) ? backup.shipments : [];
+      const suggestions = Array.isArray(backup.suggestions) ? backup.suggestions : [];
+      const ratings = Array.isArray(backup.ratings) ? backup.ratings : [];
+      const files = Array.isArray(backup.shipment_files) ? backup.shipment_files : [];
+      const fileAccess = Array.isArray(backup.shipment_file_access) ? backup.shipment_file_access : [];
+
+      runInTransaction(() => {
+        db.exec("DELETE FROM shipment_ratings; DELETE FROM suggestions; DELETE FROM shipment_files; DELETE FROM shipment_file_access; DELETE FROM shipment_updates; DELETE FROM shipments;");
+        shipments.forEach((shipment) => {
+          insertShipment.run(
+            shipment.tracking_number,
+            normalizePhoneNumber(shipment.phone_number, defaultCountryCode),
+            String(shipment.arabic_status || ""),
+            String(shipment.english_status || ""),
+            shipment.last_update_time || new Date().toISOString(),
+            shipment.delivery_date || "",
+            shipment.preferred_language === "en" ? "en" : "ar",
+            String(shipment.internal_notes || "")
+          );
+          (shipment.history || []).forEach((update) => {
+            insertUpdate.run(
+              update.id || crypto.randomUUID(),
+              shipment.tracking_number,
+              String(update.arabic_status || shipment.arabic_status || ""),
+              String(update.english_status || shipment.english_status || ""),
+              update.timestamp || shipment.last_update_time || new Date().toISOString(),
+              String(update.location || ""),
+              Number.isFinite(Number(update.progress)) ? Number(update.progress) : 0
+            );
+          });
+        });
+        suggestions.forEach((item) =>
+          insertSuggestion.run(
+            item.id || crypto.randomUUID(),
+            String(item.name || ""),
+            String(item.phone_number || ""),
+            String(item.tracking_number || ""),
+            String(item.message || ""),
+            item.language === "en" ? "en" : "ar",
+            item.created_at || new Date().toISOString()
+          )
+        );
+        ratings.forEach((item) =>
+          insertRating.run(
+            item.id || crypto.randomUUID(),
+            String(item.tracking_number || ""),
+            Math.max(1, Math.min(5, Number(item.rating || 5))),
+            String(item.comment || ""),
+            item.language === "en" ? "en" : "ar",
+            item.created_at || new Date().toISOString()
+          )
+        );
+        fileAccess.forEach((item) =>
+          upsertFileAccess.run(
+            String(item.tracking_number || ""),
+            String(item.password_hash || ""),
+            String(item.password_value || ""),
+            item.updated_at || new Date().toISOString()
+          )
+        );
+        files.forEach((file) =>
+          insertShipmentFile.run(
+            file.id || crypto.randomUUID(),
+            String(file.tracking_number || ""),
+            String(file.file_name || "shipment-file"),
+            String(file.mime_type || "application/octet-stream"),
+            Number(file.file_size || 0),
+            String(file.content_base64 || ""),
+            file.uploaded_at || new Date().toISOString()
+          )
+        );
+      });
+
+      return this.getBackup();
     },
 
     createShipment(payload) {

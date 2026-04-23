@@ -52,6 +52,22 @@ const TRANSLATIONS = {
     uploadProgress: "Uploading file {current} of {total}: {name}",
     uploadComplete: "Upload completed successfully.",
     fileTooLarge: "The file \"{name}\" is too large. Please upload files up to {size} MB each.",
+    tabTracking: "Tracking",
+    tabDocuments: "Documents",
+    tabRating: "Rating",
+    tabSuggestions: "Suggestions",
+    messagePreview: "Message Preview",
+    exportBackup: "Export Backup",
+    importBackup: "Import Backup",
+    backupExported: "Backup exported successfully.",
+    backupImported: "Backup imported successfully.",
+    backupImportConfirm: "Importing a backup will replace the current saved data. Continue?",
+    filterAll: "All shipments",
+    filterActive: "In transit",
+    filterDelivered: "Delivered",
+    filterFilesAll: "All files",
+    filterWithFiles: "With files",
+    filterWithoutFiles: "Without files",
     currentShipmentFiles: "Current Shipment Files",
     deleteShipmentFile: "Delete file",
     deleteShipmentFileConfirm: "Delete this file from the shipment documents?",
@@ -227,6 +243,22 @@ const TRANSLATIONS = {
     uploadProgress: "جاري رفع الملف {current} من {total}: {name}",
     uploadComplete: "تم رفع الملفات بنجاح.",
     fileTooLarge: "الملف \"{name}\" حجمه كبير جدًا. برجاء رفع ملفات لا تتجاوز {size} ميجابايت لكل ملف.",
+    tabTracking: "التتبع",
+    tabDocuments: "الأوراق",
+    tabRating: "التقييم",
+    tabSuggestions: "الاقتراحات",
+    messagePreview: "معاينة الرسالة",
+    exportBackup: "تصدير نسخة احتياطية",
+    importBackup: "استيراد نسخة احتياطية",
+    backupExported: "تم تصدير النسخة الاحتياطية بنجاح.",
+    backupImported: "تم استيراد النسخة الاحتياطية بنجاح.",
+    backupImportConfirm: "استيراد نسخة احتياطية سيستبدل البيانات الحالية المحفوظة. هل تريد المتابعة؟",
+    filterAll: "كل الشحنات",
+    filterActive: "قيد الشحن",
+    filterDelivered: "تم التسليم",
+    filterFilesAll: "كل الملفات",
+    filterWithFiles: "لها ملفات",
+    filterWithoutFiles: "بدون ملفات",
     currentShipmentFiles: "ملفات الشحنة الحالية",
     deleteShipmentFile: "حذف الملف",
     deleteShipmentFileConfirm: "هل تريد حذف هذا الملف من أوراق الشحنة؟",
@@ -828,6 +860,23 @@ function renderShipmentFilesWhatsappAction(whatsappUrl = "") {
   `;
 }
 
+function renderShipmentFilesMessagePreview(message = "") {
+  const preview = document.getElementById("shipmentFilesMessagePreview");
+  if (!preview) {
+    return;
+  }
+  if (!message) {
+    preview.classList.add("hidden");
+    preview.innerHTML = "";
+    return;
+  }
+  preview.classList.remove("hidden");
+  preview.innerHTML = `
+    <strong>${t("messagePreview")}</strong>
+    <textarea readonly rows="8">${escapeHtml(message)}</textarea>
+  `;
+}
+
 function setShipmentFilesUploadStatus(message = "") {
   const status = document.getElementById("shipmentFilesUploadStatus");
   if (!status) {
@@ -857,6 +906,7 @@ function renderAdminShipmentFiles(files = []) {
             <article class="document-item">
               <div>
                 <strong>${escapeHtml(file.file_name)}</strong>
+                <p>${formatDate(file.uploaded_at)}</p>
                 <p>${escapeHtml(file.mime_type)} • ${Math.ceil(Number(file.file_size || 0) / 1024)} KB</p>
               </div>
               <button
@@ -1012,6 +1062,7 @@ function renderDocuments(files, trackingNumber, password) {
         <article class="document-item">
           <div>
             <strong>${escapeHtml(file.file_name)}</strong>
+            <p>${formatDate(file.uploaded_at)}</p>
             <p>${escapeHtml(file.mime_type)} • ${Math.ceil(Number(file.file_size || 0) / 1024)} KB</p>
           </div>
           <div class="document-actions">
@@ -1167,10 +1218,49 @@ async function downloadExcelReport() {
   URL.revokeObjectURL(downloadUrl);
 }
 
+async function downloadBackup() {
+  const token = localStorage.getItem(storageKeys.token);
+  if (!token) throw new Error("Unauthorized");
+  const response = await fetch(buildApiUrl("/api/backup"), {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error("Unable to export backup.");
+  const blob = await response.blob();
+  const downloadUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = downloadUrl;
+  link.download = `tatweer-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(downloadUrl);
+}
+
+async function importBackupFile(file) {
+  const text = await file.text();
+  const backup = JSON.parse(text);
+  await api("/api/backup/import", {
+    method: "POST",
+    body: JSON.stringify(backup)
+  });
+}
+
 function setupTrackingPage() {
   renderSearchHistory();
   renderTimeline([]);
   syncSupportWhatsappLink();
+
+  document.querySelectorAll("[data-customer-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const selectedTab = button.dataset.customerTab;
+      document.querySelectorAll("[data-customer-tab]").forEach((tabButton) => {
+        tabButton.classList.toggle("active", tabButton === button);
+      });
+      document.querySelectorAll("[data-customer-panel]").forEach((panel) => {
+        panel.classList.toggle("active", panel.dataset.customerPanel === selectedTab);
+      });
+    });
+  });
 
   document.getElementById("trackingForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -1296,6 +1386,7 @@ function setupTrackingPage() {
   }
 
   if (documentsFromUrl) {
+    document.querySelector('[data-customer-tab="documents"]')?.click();
     const documentsTrackingInput = document.getElementById("documentsTrackingInput");
     const documentsPasswordInput = document.getElementById("documentsPasswordInput");
     if (documentsTrackingInput) {
@@ -1400,8 +1491,18 @@ function renderShipmentsTable(shipments) {
   const searchValue = String(document.getElementById("shipmentSearchInput")?.value || "")
     .trim()
     .toLowerCase();
-  const visibleShipments = searchValue
-    ? shipments.filter((shipment) => {
+  const statusFilter = document.getElementById("shipmentStatusFilter")?.value || "all";
+  const filesFilter = document.getElementById("shipmentFilesFilter")?.value || "all";
+  const visibleShipments = shipments
+    .filter((shipment) => {
+      if (statusFilter === "active" && isCompletedShipment(shipment)) return false;
+      if (statusFilter === "delivered" && !isCompletedShipment(shipment)) return false;
+      if (filesFilter === "with-files" && !Number(shipment.files_count || 0)) return false;
+      if (filesFilter === "without-files" && Number(shipment.files_count || 0)) return false;
+      return true;
+    })
+    .filter((shipment) => {
+      if (!searchValue) return true;
         const searchable = [
           shipment.tracking_number,
           shipment.phone_number,
@@ -1412,8 +1513,7 @@ function renderShipmentsTable(shipments) {
           .join(" ")
           .toLowerCase();
         return searchable.includes(searchValue);
-      })
-    : shipments;
+      });
 
   body.innerHTML = visibleShipments
     .map((shipment) => {
@@ -1595,6 +1695,7 @@ async function saveShipmentFilesFromAdmin() {
       trackingNumber,
       result.documents_password || password
     );
+    renderShipmentFilesMessagePreview(whatsappMessage);
     const whatsappUrl = buildCustomerFilesWhatsappLink(result.phone_number, whatsappMessage);
     if (!whatsappUrl) {
       result.whatsapp_warning = t("shipmentFilesWhatsappMissingPhone");
@@ -1640,8 +1741,38 @@ function setupAdminPage() {
       notify(error.message || t("loadShipmentsError"));
     }
   });
+  document.getElementById("exportBackupBtn")?.addEventListener("click", async () => {
+    try {
+      await downloadBackup();
+      notify(t("backupExported"));
+    } catch (error) {
+      notify(error.message || t("loadShipmentsError"));
+    }
+  });
+  document.getElementById("importBackupInput")?.addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !window.confirm(t("backupImportConfirm"))) {
+      event.target.value = "";
+      return;
+    }
+    try {
+      await importBackupFile(file);
+      await loadAdminData();
+      notify(t("backupImported"));
+    } catch (error) {
+      notify(error.message || t("loadShipmentsError"));
+    } finally {
+      event.target.value = "";
+    }
+  });
 
   document.getElementById("shipmentSearchInput")?.addEventListener("input", () => {
+    renderShipmentsTable(adminState.shipments);
+  });
+  document.getElementById("shipmentStatusFilter")?.addEventListener("change", () => {
+    renderShipmentsTable(adminState.shipments);
+  });
+  document.getElementById("shipmentFilesFilter")?.addEventListener("change", () => {
     renderShipmentsTable(adminState.shipments);
   });
 
@@ -1676,6 +1807,7 @@ function setupAdminPage() {
   document.getElementById("shipmentFilesForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     renderShipmentFilesWhatsappAction();
+    renderShipmentFilesMessagePreview();
     const submitButton = document.getElementById("saveShipmentFilesBtn");
     if (submitButton) {
       submitButton.disabled = true;

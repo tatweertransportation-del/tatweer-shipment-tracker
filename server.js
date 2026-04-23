@@ -776,10 +776,16 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       const shipments = await database.getAllShipments();
+      const shipmentsWithFileCounts = await Promise.all(
+        shipments.map(async (shipment) => ({
+          ...shipment,
+          files_count: (await database.getShipmentFiles(shipment.tracking_number)).length
+        }))
+      );
       sendJson(
         res,
         200,
-        shipments.map((shipment) => withDerivedFields(shipment, req))
+        shipmentsWithFileCounts.map((shipment) => withDerivedFields(shipment, req))
       );
       return;
     }
@@ -803,6 +809,40 @@ const server = http.createServer(async (req, res) => {
         "Cache-Control": "no-store"
       });
       res.end(body);
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/api/backup") {
+      const session = getSessionFromRequest(req);
+      if (!session) {
+        sendJson(res, 401, { error: "Unauthorized" });
+        return;
+      }
+      const backup = await database.getBackup();
+      const body = Buffer.from(JSON.stringify(backup, null, 2), "utf8");
+      res.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Length": body.length,
+        "Content-Disposition": `attachment; filename="tatweer-backup-${new Date().toISOString().slice(0, 10)}.json"`,
+        "Cache-Control": "no-store"
+      });
+      res.end(body);
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/backup/import") {
+      const session = getSessionFromRequest(req);
+      if (!session) {
+        sendJson(res, 401, { error: "Unauthorized" });
+        return;
+      }
+      const backup = await readRequestBodyWithLimit(req, 80 * 1024 * 1024);
+      const restored = await database.restoreBackup(backup);
+      sendJson(res, 200, {
+        ok: true,
+        shipments_count: restored.shipments.length,
+        files_count: restored.shipment_files.length
+      });
       return;
     }
 

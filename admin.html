@@ -204,6 +204,7 @@
               </label>
               <button class="primary-btn" id="saveShipmentFilesBtn" type="submit" data-i18n="saveShipmentFiles">Save Shipment Files</button>
             </form>
+            <div class="message-preview hidden" id="shipmentFilesMessagePreview"></div>
             <div class="admin-whatsapp-action hidden" id="shipmentFilesWhatsappAction"></div>
             <div class="admin-files-preview" id="adminShipmentFilesPreview"></div>
           </section>
@@ -217,9 +218,26 @@
               <button class="primary-btn export-btn" id="exportExcelBtn" type="button" data-i18n="exportExcel">
                 Export Excel
               </button>
+              <button class="ghost-outline-btn" id="exportBackupBtn" type="button" data-i18n="exportBackup">
+                Export Backup
+              </button>
+              <label class="ghost-outline-btn import-backup-label">
+                <span data-i18n="importBackup">Import Backup</span>
+                <input class="sr-only" type="file" id="importBackupInput" accept="application/json" />
+              </label>
             </div>
             <div class="table-tools">
               <input type="search" id="shipmentSearchInput" data-i18n-placeholder="shipmentSearchPlaceholder" placeholder="Search by tracking number, phone, status, or notes" />
+              <select id="shipmentStatusFilter">
+                <option value="all" data-i18n="filterAll">All shipments</option>
+                <option value="active" data-i18n="filterActive">In transit</option>
+                <option value="delivered" data-i18n="filterDelivered">Delivered</option>
+              </select>
+              <select id="shipmentFilesFilter">
+                <option value="all" data-i18n="filterFilesAll">All files</option>
+                <option value="with-files" data-i18n="filterWithFiles">With files</option>
+                <option value="without-files" data-i18n="filterWithoutFiles">Without files</option>
+              </select>
             </div>
             <div class="table-wrap">
               <table>

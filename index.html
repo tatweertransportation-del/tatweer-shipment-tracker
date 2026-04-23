@@ -63,7 +63,14 @@
           </div>
         </section>
 
-        <section class="content-grid">
+        <nav class="customer-tabs" aria-label="Customer tools">
+          <button class="active" type="button" data-customer-tab="tracking" data-i18n="tabTracking">Tracking</button>
+          <button type="button" data-customer-tab="documents" data-i18n="tabDocuments">Documents</button>
+          <button type="button" data-customer-tab="rating" data-i18n="tabRating">Rating</button>
+          <button type="button" data-customer-tab="suggestions" data-i18n="tabSuggestions">Suggestions</button>
+        </nav>
+
+        <section class="content-grid customer-tab-panel active" data-customer-panel="tracking">
           <article class="results-card glass-card" id="resultsCard">
             <div class="card-head">
               <div>
@@ -155,7 +162,7 @@
           </aside>
         </section>
 
-        <section class="glass-card documents-section">
+        <section class="glass-card documents-section customer-tab-panel" data-customer-panel="documents">
           <div class="documents-copy">
             <p class="card-label" data-i18n="documentsTitle">Shipment Documents</p>
             <h3 data-i18n="documentsHeadline">View your shipment papers securely</h3>
@@ -181,7 +188,7 @@
           <div id="documentsResult" class="documents-list"></div>
         </section>
 
-        <section class="glass-card rating-section">
+        <section class="glass-card rating-section customer-tab-panel" data-customer-panel="rating">
           <div>
             <p class="card-label" data-i18n="ratingTitle">Shipment Rating</p>
             <h3 data-i18n="ratingHeadline">Rate your shipment experience</h3>
@@ -208,7 +215,7 @@
           </form>
         </section>
 
-        <section class="glass-card suggestions-section">
+        <section class="glass-card suggestions-section customer-tab-panel" data-customer-panel="suggestions">
           <div class="suggestions-feature-card">
             <p class="card-label" data-i18n="suggestionsTitle">Suggestions and Feedback</p>
             <h3 data-i18n="suggestionsHeadline">Help us make tracking better for you</h3>
