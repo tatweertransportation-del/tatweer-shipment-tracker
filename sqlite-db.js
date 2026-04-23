@@ -68,7 +68,8 @@ function createSqliteDatabase(options) {
       english_status TEXT NOT NULL,
       last_update_time TEXT NOT NULL,
       delivery_date TEXT NOT NULL,
-      preferred_language TEXT NOT NULL DEFAULT 'ar'
+      preferred_language TEXT NOT NULL DEFAULT 'ar',
+      internal_notes TEXT NOT NULL DEFAULT ''
     );
 
     CREATE TABLE IF NOT EXISTS shipment_updates (
@@ -92,6 +93,11 @@ function createSqliteDatabase(options) {
       created_at TEXT NOT NULL
     );
   `);
+
+  const shipmentColumns = db.prepare("PRAGMA table_info(shipments)").all();
+  if (!shipmentColumns.some((column) => column.name === "internal_notes")) {
+    db.exec("ALTER TABLE shipments ADD COLUMN internal_notes TEXT NOT NULL DEFAULT ''");
+  }
 
   const countShipments = db.prepare("SELECT COUNT(*) AS count FROM shipments");
   const countSuggestions = db.prepare("SELECT COUNT(*) AS count FROM suggestions");
@@ -215,7 +221,8 @@ function createSqliteDatabase(options) {
       english_status,
       last_update_time,
       delivery_date,
-      preferred_language
+      preferred_language,
+      internal_notes
     FROM shipments
     ORDER BY datetime(last_update_time) DESC, tracking_number DESC
   `);
@@ -228,7 +235,8 @@ function createSqliteDatabase(options) {
       english_status,
       last_update_time,
       delivery_date,
-      preferred_language
+      preferred_language,
+      internal_notes
     FROM shipments
     WHERE tracking_number = ?
   `);
@@ -268,6 +276,7 @@ function createSqliteDatabase(options) {
       last_update_time: row.last_update_time,
       delivery_date: row.delivery_date,
       preferred_language: row.preferred_language === "en" ? "en" : "ar",
+      internal_notes: row.internal_notes || "",
       history
     };
   }
@@ -280,8 +289,9 @@ function createSqliteDatabase(options) {
       english_status,
       last_update_time,
       delivery_date,
-      preferred_language
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      preferred_language,
+      internal_notes
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertUpdate = db.prepare(`
@@ -304,7 +314,8 @@ function createSqliteDatabase(options) {
       english_status = ?,
       last_update_time = ?,
       delivery_date = ?,
-      preferred_language = ?
+      preferred_language = ?,
+      internal_notes = ?
     WHERE tracking_number = ?
   `);
 
@@ -338,7 +349,8 @@ function createSqliteDatabase(options) {
         english_status: payload.english_status.trim(),
         last_update_time: timestamp,
         delivery_date: payload.delivery_date,
-        preferred_language: payload.preferred_language === "en" ? "en" : "ar"
+        preferred_language: payload.preferred_language === "en" ? "en" : "ar",
+        internal_notes: String(payload.internal_notes || "").trim()
       };
 
       const history = [
@@ -370,7 +382,8 @@ function createSqliteDatabase(options) {
           shipment.english_status,
           shipment.last_update_time,
           shipment.delivery_date,
-          shipment.preferred_language
+          shipment.preferred_language,
+          shipment.internal_notes
         );
 
         history.forEach((item) => {
@@ -409,7 +422,11 @@ function createSqliteDatabase(options) {
         english_status: payload.english_status ? payload.english_status.trim() : current.english_status,
         last_update_time: timestamp,
         delivery_date: payload.delivery_date || current.delivery_date,
-        preferred_language: payload.preferred_language === "en" ? "en" : current.preferred_language
+        preferred_language: payload.preferred_language === "en" ? "en" : current.preferred_language,
+        internal_notes:
+          payload.internal_notes !== undefined
+            ? String(payload.internal_notes || "").trim()
+            : current.internal_notes
       };
 
       const progress = Number.isFinite(Number(payload.progress))
@@ -424,6 +441,7 @@ function createSqliteDatabase(options) {
           nextShipment.last_update_time,
           nextShipment.delivery_date,
           nextShipment.preferred_language,
+          nextShipment.internal_notes,
           nextShipment.tracking_number
         );
 

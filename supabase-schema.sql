@@ -5,8 +5,12 @@ create table if not exists public.shipments (
   english_status text not null,
   last_update_time timestamptz not null,
   delivery_date date not null,
-  preferred_language text not null default 'ar'
+  preferred_language text not null default 'ar',
+  internal_notes text not null default ''
 );
+
+alter table public.shipments
+add column if not exists internal_notes text not null default '';
 
 create table if not exists public.shipment_updates (
   id uuid primary key,

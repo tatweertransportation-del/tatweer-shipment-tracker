@@ -16,7 +16,7 @@
     <div class="page-shell">
       <header class="topbar">
         <div class="brand-lockup">
-          <img class="brand-logo" src="assets/tatweer-logo.svg" alt="Tatweer logo" />
+          <img class="brand-logo" src="assets/tatweer-logo.png" alt="Tatweer logo" />
           <div class="brand-copy">
             <p class="eyebrow" data-i18n="adminBadge">Operations Control Center</p>
             <h1 class="brand">Tatweer Tracking System Admin</h1>
@@ -145,6 +145,10 @@
                   <span data-i18n="progressPercent">Progress %</span>
                   <input type="number" id="progressInput" min="0" max="100" value="75" />
                 </label>
+                <label>
+                  <span data-i18n="internalNotes">Internal Notes</span>
+                  <textarea id="internalNotesInput" rows="3" data-i18n-placeholder="internalNotesPlaceholder" placeholder="Private notes for the operations team only."></textarea>
+                </label>
                 <label class="checkbox-row">
                   <input type="checkbox" id="sendWhatsappCheckbox" />
                   <span data-i18n="sendWhatsapp">Send WhatsApp Notification</span>
@@ -164,6 +168,9 @@
                 Export Excel
               </button>
             </div>
+            <div class="table-tools">
+              <input type="search" id="shipmentSearchInput" data-i18n-placeholder="shipmentSearchPlaceholder" placeholder="Search by tracking number, phone, status, or notes" />
+            </div>
             <div class="table-wrap">
               <table>
                 <thead>
@@ -171,9 +178,11 @@
                     <th data-i18n="trackingNumber">Tracking Number</th>
                     <th data-i18n="customerPhone">Customer Phone</th>
                     <th data-i18n="currentStatus">Current Status</th>
+                    <th data-i18n="internalNotes">Internal Notes</th>
                     <th data-i18n="deliveryDate">Delivery Date</th>
                     <th data-i18n="lastUpdate">Last Update</th>
                     <th data-i18n="progressHeader">Progress</th>
+                    <th data-i18n="actions">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="shipmentsTableBody"></tbody>

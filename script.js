@@ -16,10 +16,24 @@ const TRANSLATIONS = {
     timeline: "Shipment Timeline",
     latestMilestones: "Latest milestones",
     contactWhatsapp: "Contact via WhatsApp",
+    copyTrackingLink: "Copy Tracking Link",
+    copyLinkSuccess: "Tracking link copied.",
+    copyLinkError: "Unable to copy the tracking link.",
+    trackingNotFoundTitle: "We could not find this shipment.",
+    trackingNotFoundText: "Please check the tracking number or contact our support team on WhatsApp for help.",
+    contactSupportNow: "Contact support now",
     promoFastDelivery: "⚡ Fast delivery",
     promoLiveTracking: "📍 Live shipment tracking",
     promoSafeTransport: "🛡️ Safe transport",
     promoWhatsappSupport: "💬 WhatsApp support",
+    aboutEyebrow: "About Tatweer",
+    aboutTitle: "Reliable logistics solutions",
+    aboutText:
+      "Tatweer Logistics Services specializes in transport and logistics solutions, delivering professional services with quality, commitment, strong heavy-transport experience, equipped fleet, and a qualified team focused on trusted long-term partnerships.",
+    trustQuality: "Quality commitment",
+    trustFleet: "Equipped fleet",
+    trustTeam: "Qualified team",
+    trustPartnerships: "Trusted partnerships",
     searchHistory: "Search History",
     clearHistory: "Clear",
     supportTitle: "Need help with your cargo?",
@@ -70,12 +84,16 @@ const TRANSLATIONS = {
     customEnglishStatus: "Custom English Status",
     shipmentLocation: "Location",
     progressPercent: "Progress %",
+    internalNotes: "Internal Notes",
+    internalNotesPlaceholder: "Private notes for the operations team only.",
     sendWhatsapp: "Send WhatsApp Notification",
     saveUpdate: "Save Update",
     allShipments: "All Shipments",
     liveShipmentList: "Live Shipment List",
+    shipmentSearchPlaceholder: "Search by tracking number, phone, status, or notes",
     currentStatus: "Current Status",
     progressHeader: "Progress",
+    actions: "Actions",
     trackingInputPlaceholder: "Enter Tracking Number",
     trackingHeadlinePrefix: "Tracking Number",
     loginSuccess: "Login successful.",
@@ -120,10 +138,24 @@ const TRANSLATIONS = {
     timeline: "مراحل الشحنة",
     latestMilestones: "أحدث المحطات",
     contactWhatsapp: "تواصل واتساب",
+    copyTrackingLink: "نسخ رابط التتبع",
+    copyLinkSuccess: "تم نسخ رابط التتبع.",
+    copyLinkError: "تعذر نسخ رابط التتبع.",
+    trackingNotFoundTitle: "لم نتمكن من العثور على هذه الشحنة.",
+    trackingNotFoundText: "يرجى التأكد من رقم الشحنة أو التواصل مع فريق الدعم عبر واتساب للمساعدة.",
+    contactSupportNow: "تواصل مع الدعم الآن",
     promoFastDelivery: "⚡ سرعة في التسليم",
     promoLiveTracking: "📍 متابعة مباشرة للشحنة",
     promoSafeTransport: "🛡️ نقل آمن وموثوق",
     promoWhatsappSupport: "💬 دعم عبر واتساب",
+    aboutEyebrow: "نبذة عن تطوير",
+    aboutTitle: "حلول لوجستية موثوقة",
+    aboutText:
+      "تطوير للخدمات اللوجستية هي شركة متخصصة في حلول النقل والخدمات اللوجستية، تقدم خدماتها باحترافية عالية وفق أعلى معايير الجودة والالتزام. تعتمد الشركة على خبرة قوية في مجال النقل الثقيل وإدارة العمليات اللوجستية، بما يضمن سرعة التنفيذ ودقة المواعيد وكفاءة التشغيل. وتسعى تطوير إلى تقديم خدمات موثوقة تلبي احتياجات العملاء في مختلف القطاعات، من خلال أسطول مجهز وفريق عمل مؤهل، مع التركيز على بناء شراكات طويلة الأمد قائمة على الثقة والتميز.",
+    trustQuality: "التزام بالجودة",
+    trustFleet: "أسطول مجهز",
+    trustTeam: "فريق مؤهل",
+    trustPartnerships: "شراكات طويلة الأمد",
     searchHistory: "سجل البحث",
     clearHistory: "مسح",
     supportTitle: "هل تحتاج مساعدة في شحنتك؟",
@@ -173,12 +205,16 @@ const TRANSLATIONS = {
     customEnglishStatus: "حالة مخصصة بالإنجليزية",
     shipmentLocation: "الموقع",
     progressPercent: "نسبة التقدم",
+    internalNotes: "ملاحظات داخلية",
+    internalNotesPlaceholder: "ملاحظات خاصة بفريق التشغيل فقط ولا تظهر للعميل.",
     sendWhatsapp: "إرسال إشعار واتساب",
     saveUpdate: "حفظ التحديث",
     allShipments: "كل الشحنات",
     liveShipmentList: "قائمة الشحنات المباشرة",
+    shipmentSearchPlaceholder: "ابحث برقم الشحنة أو الهاتف أو الحالة أو الملاحظات",
     currentStatus: "الحالة الحالية",
     progressHeader: "التقدم",
+    actions: "إجراءات",
     trackingInputPlaceholder: "أدخل رقم الشحنة",
     trackingHeadlinePrefix: "رقم الشحنة",
     loginSuccess: "تم تسجيل الدخول بنجاح.",
@@ -238,6 +274,37 @@ function buildApiUrl(path) {
   return `${resolveApiBaseUrl()}${normalizedPath}`;
 }
 
+function buildTrackingPageLink(trackingNumber) {
+  const baseUrl = normalizeBaseUrl(APP_CONFIG.APP_BASE_URL) || window.location.origin;
+  return `${baseUrl}/index.html?tracking=${encodeURIComponent(trackingNumber)}`;
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const input = document.createElement("textarea");
+  input.value = text;
+  input.setAttribute("readonly", "");
+  input.style.position = "fixed";
+  input.style.opacity = "0";
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand("copy");
+  input.remove();
+}
+
+async function copyTrackingLink(trackingNumber) {
+  try {
+    await copyTextToClipboard(buildTrackingPageLink(trackingNumber));
+    notify(t("copyLinkSuccess"));
+  } catch (error) {
+    notify(t("copyLinkError"));
+  }
+}
+
 function normalizeWhatsappContactNumber(phoneNumber) {
   const cleaned = String(phoneNumber || "").replace(/[^\d]/g, "");
   if (!cleaned) {
@@ -260,28 +327,14 @@ function buildAdminShipmentMessage(shipment, messageType = "update") {
   const location = getLatestShipmentLocation(shipment);
   const locationLineEn = location ? `Current Location: ${location}\n` : "";
   const locationLineAr = location ? `الموقع الحالي: ${location}\n` : "";
+  const supportPhone = APP_CONFIG.SUPPORT_WHATSAPP_NUMBER || "01019552952";
 
   if (isEnglish) {
-    if (messageType === "create") {
-      return `Tatweer Tracking System
+    const title = messageType === "create" ? "Your shipment has been registered." : "Your shipment has a new update.";
+    return `Tatweer Logistics
 
-Dear Customer,
-We would like to inform you that a new shipment has been registered for you with Tatweer Truck Transport Company.
-
-Tracking Number: ${shipment.tracking_number}
-Current Status: ${shipment.english_status}
-${locationLineEn}Estimated Delivery: ${formatDate(shipment.delivery_date)}
-
-You can track your shipment here:
-${shipment.tracking_link}
-
-Thank you for choosing Tatweer.`;
-    }
-
-    return `Tatweer Tracking System
-
-Dear Customer,
-Your shipment status has been updated successfully by Tatweer Truck Transport Company.
+Dear customer,
+${title}
 
 Tracking Number: ${shipment.tracking_number}
 Current Status: ${shipment.english_status}
@@ -290,38 +343,25 @@ ${locationLineEn}Estimated Delivery: ${formatDate(shipment.delivery_date)}
 Track your shipment here:
 ${shipment.tracking_link}
 
+Support: ${supportPhone}
 Thank you for choosing Tatweer.`;
   }
 
-  if (messageType === "create") {
-    return `نظام تتبع تطوير
+  const title = messageType === "create" ? "تم تسجيل شحنتكم بنجاح." : "يوجد تحديث جديد على شحنتكم.";
+  return `تطوير للخدمات اللوجستية
 
 عزيزنا العميل،
-نفيدكم بأنه تم تسجيل شحنة جديدة لكم لدى شركة تطوير للنقل.
+${title}
 
 رقم الشحنة: ${shipment.tracking_number}
 الحالة الحالية: ${shipment.arabic_status}
 ${locationLineAr}موعد التسليم المتوقع: ${formatDate(shipment.delivery_date)}
 
-يمكنكم متابعة الشحنة من خلال الرابط التالي:
+رابط التتبع:
 ${shipment.tracking_link}
 
-نشكر ثقتكم في تطوير.`;
-  }
-
-  return `نظام تتبع تطوير
-
-عزيزنا العميل،
-تم تحديث حالة شحنتكم بنجاح لدى شركة تطوير للنقل.
-
-رقم الشحنة: ${shipment.tracking_number}
-الحالة الحالية: ${shipment.arabic_status}
-${locationLineAr}موعد التسليم المتوقع: ${formatDate(shipment.delivery_date)}
-
-يمكنكم متابعة الشحنة من خلال الرابط التالي:
-${shipment.tracking_link}
-
-نشكر ثقتكم في تطوير.`;
+الدعم: ${supportPhone}
+نشكركم على ثقتكم في تطوير.`;
 }
 
 function openCustomerUpdateWhatsapp(shipment, messageType = "update") {
@@ -371,6 +411,7 @@ function setLanguage(language) {
 
   if (page === "admin" && (adminState.shipments.length || adminState.suggestions.length)) {
     renderShipmentOptions(adminState.shipments);
+    syncSelectedShipmentNotes();
     renderAnalytics(adminState.shipments, adminState.suggestions);
     renderShipmentsTable(adminState.shipments);
     renderSuggestionsTable(adminState.suggestions);
@@ -390,6 +431,15 @@ function setTheme(theme) {
 
 function notify(message) {
   window.alert(message);
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function formatDate(dateString) {
@@ -552,11 +602,14 @@ function renderShipment(shipment) {
   const progressValue = document.getElementById("progressValue");
   const progressFill = document.getElementById("progressFill");
   const whatsappLink = document.getElementById("whatsappLink");
+  const copyTrackingLinkBtn = document.getElementById("copyTrackingLinkBtn");
+  const trackingFeedback = document.getElementById("trackingFeedback");
 
   if (!headline || !statusBadge) {
     return;
   }
 
+  trackingFeedback?.classList.add("hidden");
   headline.textContent = `${t("trackingHeadlinePrefix")}: ${shipment.tracking_number}`;
   statusBadge.textContent =
     currentLanguage === "ar" ? shipment.arabic_status : shipment.english_status;
@@ -570,8 +623,41 @@ function renderShipment(shipment) {
   if (whatsappLink) {
     whatsappLink.href = buildCustomerWhatsappLink(shipment.tracking_number);
   }
+  if (copyTrackingLinkBtn) {
+    copyTrackingLinkBtn.classList.remove("hidden");
+    copyTrackingLinkBtn.dataset.trackingNumber = shipment.tracking_number;
+  }
 
   renderTimeline(shipment.history || []);
+}
+
+function renderShipmentNotFound(trackingNumber) {
+  const headline = document.getElementById("trackingHeadline");
+  const statusBadge = document.getElementById("statusBadge");
+  const trackingFeedback = document.getElementById("trackingFeedback");
+  const copyTrackingLinkBtn = document.getElementById("copyTrackingLinkBtn");
+  if (!trackingFeedback) {
+    notify(t("shipmentNotFound"));
+    return;
+  }
+
+  lastViewedShipment = null;
+  if (headline) {
+    headline.textContent = t("trackingNotFoundTitle");
+  }
+  if (statusBadge) {
+    statusBadge.textContent = "--";
+  }
+  copyTrackingLinkBtn?.classList.add("hidden");
+  trackingFeedback.classList.remove("hidden");
+  trackingFeedback.innerHTML = `
+    <strong>${t("trackingNotFoundTitle")}</strong>
+    <p>${t("trackingNotFoundText")}</p>
+    <a class="whatsapp-btn" href="${buildCustomerWhatsappLink(trackingNumber || "support")}" target="_blank" rel="noopener">
+      ${t("contactSupportNow")}
+    </a>
+  `;
+  renderTimeline([]);
 }
 
 async function fetchShipment(trackingNumber) {
@@ -660,7 +746,18 @@ function setupTrackingPage() {
     try {
       await fetchShipment(input.value);
     } catch (error) {
-      notify(error.message === "Shipment not found" ? t("shipmentNotFound") : error.message);
+      if (error.message === "Shipment not found") {
+        renderShipmentNotFound(input.value);
+      } else {
+        notify(error.message);
+      }
+    }
+  });
+
+  document.getElementById("copyTrackingLinkBtn")?.addEventListener("click", (event) => {
+    const trackingNumber = event.currentTarget.dataset.trackingNumber;
+    if (trackingNumber) {
+      copyTrackingLink(trackingNumber);
     }
   });
 
@@ -674,7 +771,7 @@ function setupTrackingPage() {
     try {
       await fetchShipment(trackingNumber);
     } catch (error) {
-      notify(t("shipmentNotFound"));
+      renderShipmentNotFound(trackingNumber);
     }
   });
 
@@ -702,7 +799,7 @@ function setupTrackingPage() {
       suggestionTrackingInput.value = trackingFromUrl;
     }
     fetchShipment(trackingFromUrl).catch(() => {
-      notify(t("shipmentNotFound"));
+      renderShipmentNotFound(trackingFromUrl);
     });
   }
 }
@@ -750,6 +847,19 @@ function renderShipmentOptions(shipments) {
     .join("");
 }
 
+function getSelectedShipment() {
+  const trackingNumber = document.getElementById("shipmentSelect")?.value;
+  return adminState.shipments.find((shipment) => shipment.tracking_number === trackingNumber) || null;
+}
+
+function syncSelectedShipmentNotes() {
+  const notesInput = document.getElementById("internalNotesInput");
+  if (!notesInput) {
+    return;
+  }
+  notesInput.value = getSelectedShipment()?.internal_notes || "";
+}
+
 function renderAnalytics(shipments, suggestions) {
   const delivered = shipments.filter((shipment) => shipment.progress >= 100).length;
   const suggestionsCount = Array.isArray(suggestions) ? suggestions.length : 0;
@@ -768,18 +878,42 @@ function renderShipmentsTable(shipments) {
     return;
   }
 
-  body.innerHTML = shipments
+  const searchValue = String(document.getElementById("shipmentSearchInput")?.value || "")
+    .trim()
+    .toLowerCase();
+  const visibleShipments = searchValue
+    ? shipments.filter((shipment) => {
+        const searchable = [
+          shipment.tracking_number,
+          shipment.phone_number,
+          shipment.arabic_status,
+          shipment.english_status,
+          shipment.internal_notes
+        ]
+          .join(" ")
+          .toLowerCase();
+        return searchable.includes(searchValue);
+      })
+    : shipments;
+
+  body.innerHTML = visibleShipments
     .map((shipment) => {
       const currentStatus =
         currentLanguage === "ar" ? shipment.arabic_status : shipment.english_status;
       return `
         <tr>
-          <td>${shipment.tracking_number}</td>
-          <td>${shipment.phone_number}</td>
-          <td>${currentStatus}</td>
+          <td>${escapeHtml(shipment.tracking_number)}</td>
+          <td>${escapeHtml(shipment.phone_number)}</td>
+          <td>${escapeHtml(currentStatus)}</td>
+          <td>${escapeHtml(shipment.internal_notes || "--")}</td>
           <td>${formatDate(shipment.delivery_date)}</td>
           <td>${formatDate(shipment.last_update_time)}</td>
           <td>${shipment.progress}%</td>
+          <td>
+            <button class="text-btn" type="button" data-copy-tracking="${escapeHtml(shipment.tracking_number)}">
+              ${t("copyTrackingLink")}
+            </button>
+          </td>
         </tr>
       `;
     })
@@ -838,6 +972,7 @@ async function loadAdminData() {
   };
 
   renderShipmentOptions(sortedShipments);
+  syncSelectedShipmentNotes();
   renderAnalytics(sortedShipments, sortedSuggestions);
   renderShipmentsTable(sortedShipments);
   renderSuggestionsTable(sortedSuggestions);
@@ -874,6 +1009,21 @@ function setupAdminPage() {
       notify(t("exportReady"));
     } catch (error) {
       notify(error.message || t("loadShipmentsError"));
+    }
+  });
+
+  document.getElementById("shipmentSearchInput")?.addEventListener("input", () => {
+    renderShipmentsTable(adminState.shipments);
+  });
+
+  document.getElementById("shipmentSelect")?.addEventListener("change", () => {
+    syncSelectedShipmentNotes();
+  });
+
+  document.getElementById("shipmentsTableBody")?.addEventListener("click", (event) => {
+    const target = event.target.closest("[data-copy-tracking]");
+    if (target) {
+      copyTrackingLink(target.dataset.copyTracking);
     }
   });
 
@@ -920,6 +1070,7 @@ function setupAdminPage() {
           arabic_status: document.getElementById("updateArabicStatusInput").value,
           english_status: document.getElementById("updateEnglishStatusInput").value,
           location: document.getElementById("locationInput").value,
+          internal_notes: document.getElementById("internalNotesInput").value,
           progress: document.getElementById("progressInput").value,
           send_whatsapp: false
         })

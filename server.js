@@ -72,6 +72,29 @@ function isLocalhostUrl(value) {
   }
 }
 
+function hashPassword(password) {
+  return crypto.createHash("sha256").update(String(password || "")).digest("hex");
+}
+
+function safeCompare(left, right) {
+  const leftBuffer = Buffer.from(String(left || ""));
+  const rightBuffer = Buffer.from(String(right || ""));
+  return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function verifyAdminCredentials(username, password) {
+  if (username !== process.env.ADMIN_USERNAME) {
+    return false;
+  }
+
+  const passwordHash = String(process.env.ADMIN_PASSWORD_HASH || "").trim();
+  if (passwordHash) {
+    return safeCompare(hashPassword(password), passwordHash);
+  }
+
+  return safeCompare(password, process.env.ADMIN_PASSWORD);
+}
+
 function createSessionToken(username) {
   const payload = {
     username,
@@ -146,6 +169,11 @@ function withDerivedFields(shipment, req) {
     progress: computeProgress(shipment.history),
     tracking_link: buildTrackingLink(shipment.tracking_number, req)
   };
+}
+
+function toPublicShipment(shipment) {
+  const { internal_notes, ...publicShipment } = shipment;
+  return publicShipment;
 }
 
 function readRequestBody(req) {
@@ -414,7 +442,7 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && pathname === "/api/login") {
       const { username, password } = await readRequestBody(req);
-      if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
+      if (verifyAdminCredentials(username, password)) {
         sendJson(res, 200, {
           token: createSessionToken(username),
           username
@@ -514,10 +542,10 @@ const server = http.createServer(async (req, res) => {
         res,
         200,
         withDerivedFields(
-          {
+          toPublicShipment({
             ...shipment,
             preferred_language: requestedLanguage
-          },
+          }),
           req
         )
       );
@@ -579,6 +607,7 @@ const server = http.createServer(async (req, res) => {
         phone_number,
         progress,
         location,
+        internal_notes,
         preferred_language
       } = await readRequestBody(req);
 
@@ -589,6 +618,7 @@ const server = http.createServer(async (req, res) => {
         phone_number,
         progress,
         location,
+        internal_notes,
         preferred_language
       });
 

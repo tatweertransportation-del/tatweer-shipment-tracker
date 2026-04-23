@@ -51,6 +51,7 @@ function createSupabaseDatabase(options) {
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.SUPABASE_SERVICE_KEY ||
     "";
+  let supportsInternalNotes = true;
 
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error("Supabase environment variables are missing.");
@@ -204,19 +205,34 @@ function createSupabaseDatabase(options) {
 
   async function getAllShipments() {
     await bootstrapIfEmpty();
+    const shipmentSelect =
+      "tracking_number,phone_number,arabic_status,english_status,last_update_time,delivery_date,preferred_language" +
+      (supportsInternalNotes ? ",internal_notes" : "");
     const [shipments, updatesMap] = await Promise.all([
       request("GET", "shipments", {
         query: {
-          select:
-            "tracking_number,phone_number,arabic_status,english_status,last_update_time,delivery_date,preferred_language",
+          select: shipmentSelect,
           order: "last_update_time.desc"
         }
+      }).catch((error) => {
+        if (supportsInternalNotes && String(error.message || "").includes("internal_notes")) {
+          supportsInternalNotes = false;
+          return request("GET", "shipments", {
+            query: {
+              select:
+                "tracking_number,phone_number,arabic_status,english_status,last_update_time,delivery_date,preferred_language",
+              order: "last_update_time.desc"
+            }
+          });
+        }
+        throw error;
       }),
       getUpdatesMap()
     ]);
 
     return shipments.map((shipment) => ({
       ...shipment,
+      internal_notes: shipment.internal_notes || "",
       preferred_language: shipment.preferred_language === "en" ? "en" : "ar",
       history: updatesMap.get(shipment.tracking_number) || []
     }));
@@ -224,13 +240,28 @@ function createSupabaseDatabase(options) {
 
   async function getShipment(trackingNumber) {
     await bootstrapIfEmpty();
+    const shipmentSelect =
+      "tracking_number,phone_number,arabic_status,english_status,last_update_time,delivery_date,preferred_language" +
+      (supportsInternalNotes ? ",internal_notes" : "");
     const rows = await request("GET", "shipments", {
       query: {
-        select:
-          "tracking_number,phone_number,arabic_status,english_status,last_update_time,delivery_date,preferred_language",
+        select: shipmentSelect,
         tracking_number: `eq.${trackingNumber}`,
         limit: "1"
       }
+    }).catch((error) => {
+      if (supportsInternalNotes && String(error.message || "").includes("internal_notes")) {
+        supportsInternalNotes = false;
+        return request("GET", "shipments", {
+          query: {
+            select:
+              "tracking_number,phone_number,arabic_status,english_status,last_update_time,delivery_date,preferred_language",
+            tracking_number: `eq.${trackingNumber}`,
+            limit: "1"
+          }
+        });
+      }
+      throw error;
     });
 
     const shipment = rows[0];
@@ -248,6 +279,7 @@ function createSupabaseDatabase(options) {
 
     return {
       ...shipment,
+      internal_notes: shipment.internal_notes || "",
       preferred_language: shipment.preferred_language === "en" ? "en" : "ar",
       history: updates.map((row) => ({
         arabic_status: row.arabic_status,
@@ -324,7 +356,10 @@ function createSupabaseDatabase(options) {
       english_status: payload.english_status ? payload.english_status.trim() : current.english_status,
       last_update_time: timestamp,
       delivery_date: payload.delivery_date || current.delivery_date,
-      preferred_language: payload.preferred_language === "en" ? "en" : current.preferred_language
+      preferred_language: payload.preferred_language === "en" ? "en" : current.preferred_language,
+      ...(supportsInternalNotes && payload.internal_notes !== undefined
+        ? { internal_notes: String(payload.internal_notes || "").trim() }
+        : {})
     };
 
     const progress = Number.isFinite(Number(payload.progress))

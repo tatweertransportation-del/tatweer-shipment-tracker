@@ -16,7 +16,7 @@
     <div class="page-shell">
       <header class="topbar">
         <div class="brand-lockup">
-          <img class="brand-logo" src="assets/tatweer-logo.svg" alt="Tatweer logo" />
+          <img class="brand-logo" src="assets/tatweer-logo.png" alt="Tatweer logo" />
           <div class="brand-copy">
             <p class="eyebrow" data-i18n="brandTag">Global Freight Visibility</p>
             <h1 class="brand">Tatweer Tracking System</h1>
@@ -74,6 +74,8 @@
               <span class="status-badge" id="statusBadge">--</span>
             </div>
 
+            <div class="feedback-box hidden" id="trackingFeedback"></div>
+
             <div class="metrics-grid">
               <div class="metric-box">
                 <span class="metric-label" data-i18n="lastUpdate">Last Update</span>
@@ -108,10 +110,27 @@
               <a id="whatsappLink" class="whatsapp-btn" href="https://wa.me/201019552952" target="_blank" rel="noopener" data-i18n="contactWhatsapp">
                 Contact via WhatsApp
               </a>
+              <button class="ghost-outline-btn hidden" id="copyTrackingLinkBtn" type="button" data-i18n="copyTrackingLink">
+                Copy Tracking Link
+              </button>
             </div>
           </article>
 
           <aside class="side-panel">
+            <article class="glass-card info-card about-card">
+              <p class="card-label" data-i18n="aboutEyebrow">About Tatweer</p>
+              <h4 data-i18n="aboutTitle">Reliable logistics solutions</h4>
+              <p data-i18n="aboutText">
+                Tatweer Logistics Services specializes in transport and logistics solutions, delivering reliable services with high professionalism, quality, and commitment.
+              </p>
+              <div class="trust-grid">
+                <span data-i18n="trustQuality">Quality commitment</span>
+                <span data-i18n="trustFleet">Equipped fleet</span>
+                <span data-i18n="trustTeam">Qualified team</span>
+                <span data-i18n="trustPartnerships">Long-term partnerships</span>
+              </div>
+            </article>
+
             <article class="glass-card search-history-card">
               <div class="section-title-row">
                 <h4 data-i18n="searchHistory">Search History</h4>
