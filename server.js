@@ -324,6 +324,41 @@ ${documentsLink}
 نشكر ثقتكم في تطوير.`;
 }
 
+function buildCleanShipmentFilesWhatsappMessage(trackingNumber, password, req, language = "ar") {
+  const documentsLink = `${getPublicBaseUrl(req)}/?documents=${encodeURIComponent(trackingNumber)}`;
+  if (language === "en") {
+    return `Tatweer Logistics Services
+
+Dear customer,
+Your shipment documents have been uploaded successfully and are now available securely through the tracking portal.
+
+Tracking Number: ${trackingNumber}
+Documents Password: ${password}
+
+To view or download your shipment documents, please open this link:
+${documentsLink}
+
+For your privacy, please keep this password confidential and do not share it with anyone except authorized persons.
+
+Thank you for choosing Tatweer.`;
+  }
+
+  return `Tatweer Logistics Services - تطوير للخدمات اللوجستية
+
+عزيزنا العميل،
+تم رفع أوراق شحنتكم بنجاح، وأصبحت متاحة الآن بشكل آمن من خلال بوابة التتبع الخاصة بتطوير.
+
+رقم الشحنة: ${trackingNumber}
+كلمة مرور أوراق الشحنة: ${password}
+
+لعرض أو تحميل أوراق الشحنة، يرجى فتح الرابط التالي:
+${documentsLink}
+
+حفاظًا على خصوصيتكم، يرجى الاحتفاظ بكلمة المرور وعدم مشاركتها إلا مع الأشخاص المصرح لهم.
+
+نشكركم على ثقتكم في تطوير.`;
+}
+
 function redirect(res, location) {
   res.writeHead(302, {
     Location: location,
@@ -783,7 +818,7 @@ const server = http.createServer(async (req, res) => {
       const shipment = await database.getShipment(trackingNumber);
       sendJson(res, 200, {
         files: savedFiles,
-        whatsapp_message: buildShipmentFilesWhatsappMessage(
+        whatsapp_message: buildCleanShipmentFilesWhatsappMessage(
           trackingNumber,
           password,
           req,

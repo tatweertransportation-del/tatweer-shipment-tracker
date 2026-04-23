@@ -44,6 +44,8 @@ const TRANSLATIONS = {
     saveShipmentFiles: "Save Shipment Files",
     shipmentFilesSaved: "Shipment documents were saved successfully. The old files were replaced with the new uploaded files.",
     shipmentFilesError: "Unable to save shipment files.",
+    shipmentFilesWhatsappMissingPhone: "Documents were saved, but this shipment has no customer phone number for WhatsApp.",
+    shipmentFilesWhatsappBlocked: "Documents were saved, but the browser blocked WhatsApp. Please allow pop-ups and try again.",
     currentShipmentFiles: "Current Shipment Files",
     promoFastDelivery: "⚡ Fast delivery",
     promoLiveTracking: "📍 Live shipment tracking",
@@ -207,6 +209,8 @@ const TRANSLATIONS = {
     saveShipmentFiles: "حفظ ملفات الشحنة",
     shipmentFilesSaved: "تم حفظ أوراق الشحنة بنجاح، وتم استبدال الملفات القديمة بالملفات الجديدة.",
     shipmentFilesError: "تعذر حفظ ملفات الشحنة.",
+    shipmentFilesWhatsappMissingPhone: "تم حفظ أوراق الشحنة، لكن هذه الشحنة ليس بها رقم هاتف للعميل لإرسال واتساب.",
+    shipmentFilesWhatsappBlocked: "تم حفظ أوراق الشحنة، لكن المتصفح منع فتح واتساب. برجاء السماح بالنوافذ المنبثقة والمحاولة مرة أخرى.",
     currentShipmentFiles: "ملفات الشحنة الحالية",
     promoFastDelivery: "⚡ سرعة في التسليم",
     promoLiveTracking: "📍 متابعة مباشرة للشحنة",
@@ -724,6 +728,9 @@ async function fileToPayload(file) {
 
 function buildCustomerFilesWhatsappLink(phoneNumber, message) {
   const phone = normalizeWhatsappContactNumber(phoneNumber);
+  if (!phone || !message) {
+    return "";
+  }
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
 
@@ -1404,26 +1411,42 @@ async function saveShipmentFilesFromAdmin() {
   const password = document.getElementById("filesPasswordInput").value.trim();
   const input = document.getElementById("shipmentFilesInput");
   const files = Array.from(input.files || []);
+  const shouldOpenWhatsapp = Boolean(document.getElementById("sendFilesWhatsappCheckbox")?.checked);
+  const whatsappWindow = shouldOpenWhatsapp ? window.open("", "_blank") : null;
 
   if (!trackingNumber || !password || !files.length) {
+    whatsappWindow?.close();
     throw new Error("Missing files data");
   }
 
-  const payloadFiles = await Promise.all(files.map(fileToPayload));
-  const result = await api(`/api/admin/shipment-files/${encodeURIComponent(trackingNumber)}`, {
-    method: "POST",
-    body: JSON.stringify({
-      password,
-      files: payloadFiles
-    })
-  });
+  let result;
+  try {
+    const payloadFiles = await Promise.all(files.map(fileToPayload));
+    result = await api(`/api/admin/shipment-files/${encodeURIComponent(trackingNumber)}`, {
+      method: "POST",
+      body: JSON.stringify({
+        password,
+        files: payloadFiles
+      })
+    });
+  } catch (error) {
+    whatsappWindow?.close();
+    throw error;
+  }
 
-  if (document.getElementById("sendFilesWhatsappCheckbox")?.checked && result.phone_number) {
-    window.open(
-      buildCustomerFilesWhatsappLink(result.phone_number, result.whatsapp_message),
-      "_blank",
-      "noopener"
-    );
+  if (shouldOpenWhatsapp) {
+    const whatsappUrl = buildCustomerFilesWhatsappLink(result.phone_number, result.whatsapp_message);
+    if (!whatsappUrl) {
+      whatsappWindow?.close();
+      result.whatsapp_warning = t("shipmentFilesWhatsappMissingPhone");
+    } else if (whatsappWindow) {
+      whatsappWindow.opener = null;
+      whatsappWindow.location.href = whatsappUrl;
+      result.whatsapp_opened = true;
+    } else {
+      window.open(whatsappUrl, "_blank", "noopener");
+      result.whatsapp_warning = t("shipmentFilesWhatsappBlocked");
+    }
   }
 
   return result;
@@ -1482,7 +1505,8 @@ function setupAdminPage() {
       event.target.reset();
       renderShipmentOptions(adminState.shipments);
       renderAdminShipmentFiles(result.files || []);
-      notify(t("shipmentFilesSaved"));
+      const whatsappNote = result.whatsapp_warning || (result.whatsapp_opened ? ` ${t("whatsappOpened")}` : "");
+      notify(`${t("shipmentFilesSaved")}${whatsappNote ? ` ${whatsappNote}` : ""}`);
     } catch (error) {
       notify(`${t("shipmentFilesError")} ${error.message}`);
     }
