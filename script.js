@@ -57,7 +57,7 @@ const TRANSLATIONS = {
     submitSuggestion: "Send Suggestion",
     suggestionSuccess: "Your suggestion was sent successfully.",
     suggestionError: "Unable to send your suggestion.",
-    updateTimeOnly: "Updates daily at {time} your local time",
+    updateTimeOnly: "Updates daily at {time} your local time, equivalent to 2:00 PM Egypt time",
     exportExcel: "Export Excel",
     exportReady: "Excel file downloaded successfully.",
     adminBadge: "Operations Control Center",
@@ -181,7 +181,7 @@ const TRANSLATIONS = {
     submitSuggestion: "إرسال الاقتراح",
     suggestionSuccess: "تم إرسال اقتراحك بنجاح.",
     suggestionError: "تعذر إرسال الاقتراح.",
-    updateTimeOnly: "يتم التحديث يوميًا الساعة {time} بتوقيتك المحلي",
+    updateTimeOnly: "يتم التحديث يوميًا الساعة {time} بتوقيتك المحلي، بما يعادل 2:00 ظهرًا بتوقيت مصر",
     exportExcel: "استخراج إكسل",
     exportReady: "تم تنزيل ملف الإكسل بنجاح.",
     adminBadge: "مركز التحكم التشغيلي",
@@ -509,9 +509,12 @@ function getEgyptUpdateInstant() {
 
 function getLocalizedUpdateTimeText() {
   const locale = currentLanguage === "ar" ? "ar-EG" : undefined;
+  const clientTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const time = new Intl.DateTimeFormat(locale, {
     hour: "numeric",
-    minute: "2-digit"
+    minute: "2-digit",
+    timeZone: clientTimeZone,
+    timeZoneName: "short"
   }).format(getEgyptUpdateInstant());
   return t("updateTimeOnly").replace("{time}", time);
 }
