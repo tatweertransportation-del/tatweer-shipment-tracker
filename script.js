@@ -31,6 +31,7 @@ const TRANSLATIONS = {
     documentsText:
       "Enter your tracking number and the documents password sent by Tatweer to view shipment files.",
     documentsPassword: "Documents Password",
+    documentsPasswordAdminHint: "Leave empty to keep the current password. Type a new password only when you want to change it.",
     viewDocuments: "View Documents",
     documentsLoaded: "Shipment documents are ready. You can open or download each file below.",
     noDocuments: "No shipment documents are available yet.",
@@ -47,6 +48,10 @@ const TRANSLATIONS = {
     shipmentFilesWhatsappMissingPhone: "Documents were saved, but this shipment has no customer phone number for WhatsApp.",
     shipmentFilesWhatsappBlocked: "Documents were saved, but the browser blocked WhatsApp. Please allow pop-ups and try again.",
     currentShipmentFiles: "Current Shipment Files",
+    deleteShipmentFile: "Delete file",
+    deleteShipmentFileConfirm: "Delete this file from the shipment documents?",
+    deleteShipmentFileSuccess: "Shipment file deleted successfully.",
+    deleteShipmentFileError: "Unable to delete shipment file.",
     promoFastDelivery: "⚡ Fast delivery",
     promoLiveTracking: "📍 Live shipment tracking",
     promoSafeTransport: "🛡️ Safe transport",
@@ -196,6 +201,7 @@ const TRANSLATIONS = {
     documentsHeadline: "اطلع على أوراق شحنتك بأمان",
     documentsText: "أدخل رقم الشحنة وكلمة مرور الأوراق المرسلة من تطوير لعرض الملفات.",
     documentsPassword: "كلمة مرور الأوراق",
+    documentsPasswordAdminHint: "اتركها فارغة للإبقاء على كلمة المرور الحالية. اكتب كلمة مرور جديدة فقط عند تغييرها.",
     viewDocuments: "عرض الأوراق",
     documentsLoaded: "أوراق الشحنة جاهزة. يمكنك فتح أو تحميل كل ملف من القائمة التالية.",
     noDocuments: "لا توجد أوراق متاحة للشحنة حتى الآن.",
@@ -212,6 +218,10 @@ const TRANSLATIONS = {
     shipmentFilesWhatsappMissingPhone: "تم حفظ أوراق الشحنة، لكن هذه الشحنة ليس بها رقم هاتف للعميل لإرسال واتساب.",
     shipmentFilesWhatsappBlocked: "تم حفظ أوراق الشحنة، لكن المتصفح منع فتح واتساب. برجاء السماح بالنوافذ المنبثقة والمحاولة مرة أخرى.",
     currentShipmentFiles: "ملفات الشحنة الحالية",
+    deleteShipmentFile: "حذف الملف",
+    deleteShipmentFileConfirm: "هل تريد حذف هذا الملف من أوراق الشحنة؟",
+    deleteShipmentFileSuccess: "تم حذف ملف الشحنة بنجاح.",
+    deleteShipmentFileError: "تعذر حذف ملف الشحنة.",
     promoFastDelivery: "⚡ سرعة في التسليم",
     promoLiveTracking: "📍 متابعة مباشرة للشحنة",
     promoSafeTransport: "🛡️ نقل آمن وموثوق",
@@ -756,6 +766,14 @@ function renderAdminShipmentFiles(files = []) {
                 <strong>${escapeHtml(file.file_name)}</strong>
                 <p>${escapeHtml(file.mime_type)} • ${Math.ceil(Number(file.file_size || 0) / 1024)} KB</p>
               </div>
+              <button
+                class="danger-text-btn compact-btn"
+                type="button"
+                data-delete-shipment-file="${escapeHtml(file.id)}"
+                data-file-name="${escapeHtml(file.file_name)}"
+              >
+                ${t("deleteShipmentFile")}
+              </button>
             </article>
           `
         )
@@ -777,6 +795,19 @@ async function loadAdminShipmentFiles() {
   } catch (error) {
     renderAdminShipmentFiles([]);
   }
+}
+
+async function deleteShipmentFileFromAdmin(fileId) {
+  const trackingNumber = document.getElementById("filesShipmentSelect")?.value;
+  if (!trackingNumber || !fileId) {
+    return;
+  }
+
+  const result = await api(
+    `/api/admin/shipment-files/${encodeURIComponent(trackingNumber)}/${encodeURIComponent(fileId)}`,
+    { method: "DELETE" }
+  );
+  renderAdminShipmentFiles(result.files || []);
 }
 
 function renderTimeline(history = []) {
@@ -1414,7 +1445,7 @@ async function saveShipmentFilesFromAdmin() {
   const shouldOpenWhatsapp = Boolean(document.getElementById("sendFilesWhatsappCheckbox")?.checked);
   const whatsappWindow = shouldOpenWhatsapp ? window.open("", "_blank") : null;
 
-  if (!trackingNumber || !password || !files.length) {
+  if (!trackingNumber || !files.length) {
     whatsappWindow?.close();
     throw new Error("Missing files data");
   }
@@ -1496,6 +1527,25 @@ function setupAdminPage() {
 
   document.getElementById("filesShipmentSelect")?.addEventListener("change", () => {
     loadAdminShipmentFiles();
+  });
+
+  document.getElementById("adminShipmentFilesPreview")?.addEventListener("click", async (event) => {
+    const deleteButton = event.target.closest("[data-delete-shipment-file]");
+    if (!deleteButton) {
+      return;
+    }
+
+    const confirmed = window.confirm(t("deleteShipmentFileConfirm"));
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteShipmentFileFromAdmin(deleteButton.dataset.deleteShipmentFile);
+      notify(t("deleteShipmentFileSuccess"));
+    } catch (error) {
+      notify(`${t("deleteShipmentFileError")} ${error.message}`);
+    }
   });
 
   document.getElementById("shipmentFilesForm")?.addEventListener("submit", async (event) => {

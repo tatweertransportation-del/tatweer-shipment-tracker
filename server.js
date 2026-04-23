@@ -359,6 +359,50 @@ ${documentsLink}
 نشكركم على ثقتكم في تطوير.`;
 }
 
+function buildCleanShipmentFilesWhatsappMessage(trackingNumber, password, req, language = "ar") {
+  const documentsLink = `${getPublicBaseUrl(req)}/?documents=${encodeURIComponent(trackingNumber)}`;
+  if (language === "en") {
+    const passwordLine = password
+      ? `Documents Password: ${password}`
+      : "Documents Password: Please use the same documents password previously sent to you.";
+
+    return `Tatweer Logistics Services
+
+Dear customer,
+Your shipment documents have been updated successfully and are available securely through the tracking portal.
+
+Tracking Number: ${trackingNumber}
+${passwordLine}
+
+To view or download your shipment documents, please open this link:
+${documentsLink}
+
+For your privacy, please keep your documents password confidential.
+
+Thank you for choosing Tatweer.`;
+  }
+
+  const company = "Tatweer Logistics Services - \u062a\u0637\u0648\u064a\u0631 \u0644\u0644\u062e\u062f\u0645\u0627\u062a \u0627\u0644\u0644\u0648\u062c\u0633\u062a\u064a\u0629";
+  const passwordLine = password
+    ? `\u0643\u0644\u0645\u0629 \u0645\u0631\u0648\u0631 \u0623\u0648\u0631\u0627\u0642 \u0627\u0644\u0634\u062d\u0646\u0629: ${password}`
+    : "\u0643\u0644\u0645\u0629 \u0645\u0631\u0648\u0631 \u0623\u0648\u0631\u0627\u0642 \u0627\u0644\u0634\u062d\u0646\u0629: \u064a\u0631\u062c\u0649 \u0627\u0633\u062a\u062e\u062f\u0627\u0645 \u0646\u0641\u0633 \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u0627\u0644\u0645\u0631\u0633\u0644\u0629 \u0644\u0643\u0645 \u0633\u0627\u0628\u0642\u064b\u0627.";
+
+  return `${company}
+
+\u0639\u0632\u064a\u0632\u0646\u0627 \u0627\u0644\u0639\u0645\u064a\u0644\u060c
+\u062a\u0645 \u062a\u062d\u062f\u064a\u062b \u0623\u0648\u0631\u0627\u0642 \u0634\u062d\u0646\u062a\u0643\u0645 \u0628\u0646\u062c\u0627\u062d\u060c \u0648\u0623\u0635\u0628\u062d\u062a \u0645\u062a\u0627\u062d\u0629 \u0628\u0634\u0643\u0644 \u0622\u0645\u0646 \u0645\u0646 \u062e\u0644\u0627\u0644 \u0628\u0648\u0627\u0628\u0629 \u0627\u0644\u062a\u062a\u0628\u0639 \u0627\u0644\u062e\u0627\u0635\u0629 \u0628\u062a\u0637\u0648\u064a\u0631.
+
+\u0631\u0642\u0645 \u0627\u0644\u0634\u062d\u0646\u0629: ${trackingNumber}
+${passwordLine}
+
+\u0644\u0639\u0631\u0636 \u0623\u0648 \u062a\u062d\u0645\u064a\u0644 \u0623\u0648\u0631\u0627\u0642 \u0627\u0644\u0634\u062d\u0646\u0629\u060c \u064a\u0631\u062c\u0649 \u0641\u062a\u062d \u0627\u0644\u0631\u0627\u0628\u0637 \u0627\u0644\u062a\u0627\u0644\u064a:
+${documentsLink}
+
+\u062d\u0641\u0627\u0638\u064b\u0627 \u0639\u0644\u0649 \u062e\u0635\u0648\u0635\u064a\u062a\u0643\u0645\u060c \u064a\u0631\u062c\u0649 \u0627\u0644\u0627\u062d\u062a\u0641\u0627\u0638 \u0628\u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u0648\u0639\u062f\u0645 \u0645\u0634\u0627\u0631\u0643\u062a\u0647\u0627 \u0625\u0644\u0627 \u0645\u0639 \u0627\u0644\u0623\u0634\u062e\u0627\u0635 \u0627\u0644\u0645\u0635\u0631\u062d \u0644\u0647\u0645.
+
+\u0646\u0634\u0643\u0631\u0643\u0645 \u0639\u0644\u0649 \u062b\u0642\u062a\u0643\u0645 \u0641\u064a \u062a\u0637\u0648\u064a\u0631.`;
+}
+
 function redirect(res, location) {
   res.writeHead(302, {
     Location: location,
@@ -757,6 +801,38 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "DELETE" && pathname.startsWith("/api/admin/shipment-files/")) {
+      const session = getSessionFromRequest(req);
+      if (!session) {
+        sendJson(res, 401, { error: "Unauthorized" });
+        return;
+      }
+
+      const parts = pathname.split("/");
+      const trackingNumber = String(parts[4] || "").trim().toUpperCase();
+      const fileId = String(parts[5] || "").trim();
+      if (!trackingNumber || !fileId) {
+        sendJson(res, 400, { error: "Tracking number and file ID are required" });
+        return;
+      }
+
+      const remainingFiles = await database.deleteShipmentFile(trackingNumber, fileId);
+      if (remainingFiles === null) {
+        sendJson(res, 404, { error: "Shipment not found" });
+        return;
+      }
+      if (remainingFiles === false) {
+        sendJson(res, 404, { error: "File not found" });
+        return;
+      }
+
+      sendJson(res, 200, {
+        tracking_number: trackingNumber,
+        files: remainingFiles
+      });
+      return;
+    }
+
     if (req.method === "GET" && pathname.startsWith("/api/shipment-files/")) {
       const parts = pathname.split("/");
       const trackingNumber = String(parts[3] || "").trim().toUpperCase();
@@ -798,8 +874,14 @@ const server = http.createServer(async (req, res) => {
       const password = String(payload.password || "").trim();
       const files = Array.isArray(payload.files) ? payload.files : [];
 
-      if (!trackingNumber || !password || !files.length) {
-        sendJson(res, 400, { error: "Tracking number, password, and files are required" });
+      if (!trackingNumber || !files.length) {
+        sendJson(res, 400, { error: "Tracking number and files are required" });
+        return;
+      }
+
+      const currentAccess = await database.getShipmentFileAccess(trackingNumber);
+      if (!password && !currentAccess) {
+        sendJson(res, 400, { error: "Documents password is required for the first upload" });
         return;
       }
 
@@ -807,7 +889,7 @@ const server = http.createServer(async (req, res) => {
       const savedFiles = await database.replaceShipmentFiles(
         trackingNumber,
         cleanFiles,
-        hashFilePassword(trackingNumber, password)
+        password ? hashFilePassword(trackingNumber, password) : null
       );
 
       if (!savedFiles) {

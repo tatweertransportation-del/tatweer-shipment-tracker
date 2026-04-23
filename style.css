@@ -166,6 +166,7 @@ body[dir="rtl"] .brand-subtitle {
 .danger-btn,
 .whatsapp-btn,
 .text-btn,
+.danger-text-btn,
 .ghost-outline-btn {
   border: 0;
   border-radius: 999px;
@@ -202,6 +203,11 @@ body[dir="rtl"] .brand-subtitle {
   background: rgba(216, 109, 109, 0.16);
 }
 
+.compact-btn {
+  padding: 10px 12px;
+  white-space: nowrap;
+}
+
 .primary-btn,
 .danger-btn,
 .whatsapp-btn {
@@ -232,7 +238,8 @@ body[dir="rtl"] .brand-subtitle {
 .primary-btn:hover,
 .danger-btn:hover,
 .whatsapp-btn:hover,
-.text-btn:hover {
+.text-btn:hover,
+.danger-text-btn:hover {
   transform: translateY(-1px);
 }
 

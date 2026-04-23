@@ -506,14 +506,16 @@ function createSupabaseDatabase(options) {
       prefer: "return=minimal"
     });
 
-    await request("POST", "shipment_file_access", {
-      body: {
-        tracking_number: trackingNumber,
-        password_hash: passwordHash,
-        updated_at: uploadedAt
-      },
-      prefer: "resolution=merge-duplicates,return=minimal"
-    });
+    if (passwordHash) {
+      await request("POST", "shipment_file_access", {
+        body: {
+          tracking_number: trackingNumber,
+          password_hash: passwordHash,
+          updated_at: uploadedAt
+        },
+        prefer: "resolution=merge-duplicates,return=minimal"
+      });
+    }
 
     if (files.length) {
       await request("POST", "shipment_files", {
@@ -533,6 +535,34 @@ function createSupabaseDatabase(options) {
     appendAuditLog("shipment.files.replaced", {
       tracking_number: trackingNumber,
       files_count: files.length
+    });
+
+    return getShipmentFiles(trackingNumber);
+  }
+
+  async function deleteShipmentFile(trackingNumber, fileId) {
+    const current = await getShipment(trackingNumber);
+    if (!current) {
+      return null;
+    }
+
+    const file = await getShipmentFile(trackingNumber, fileId);
+    if (!file) {
+      return false;
+    }
+
+    await request("DELETE", "shipment_files", {
+      query: {
+        tracking_number: `eq.${trackingNumber}`,
+        id: `eq.${fileId}`
+      },
+      prefer: "return=minimal"
+    });
+
+    appendAuditLog("shipment.file.deleted", {
+      tracking_number: trackingNumber,
+      file_id: fileId,
+      file_name: file.file_name
     });
 
     return getShipmentFiles(trackingNumber);
@@ -588,6 +618,7 @@ function createSupabaseDatabase(options) {
     getShipmentFile,
     getShipmentFileAccess,
     replaceShipmentFiles,
+    deleteShipmentFile,
     getAllRatings,
     createRating
   };

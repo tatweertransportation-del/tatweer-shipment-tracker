@@ -387,6 +387,7 @@ function createSqliteDatabase(options) {
     WHERE tracking_number = ? AND id = ?
   `);
   const deleteFilesByShipment = db.prepare("DELETE FROM shipment_files WHERE tracking_number = ?");
+  const deleteShipmentFileById = db.prepare("DELETE FROM shipment_files WHERE tracking_number = ? AND id = ?");
   const fileAccessQuery = db.prepare(`
     SELECT tracking_number, password_hash, updated_at
     FROM shipment_file_access
@@ -651,7 +652,9 @@ function createSqliteDatabase(options) {
 
       runInTransaction(() => {
         deleteFilesByShipment.run(trackingNumber);
-        upsertFileAccess.run(trackingNumber, passwordHash, uploadedAt);
+        if (passwordHash) {
+          upsertFileAccess.run(trackingNumber, passwordHash, uploadedAt);
+        }
         cleanFiles.forEach((file) => {
           insertShipmentFile.run(
             file.id,
@@ -668,6 +671,27 @@ function createSqliteDatabase(options) {
       appendAuditLog("shipment.files.replaced", {
         tracking_number: trackingNumber,
         files_count: cleanFiles.length
+      });
+
+      return this.getShipmentFiles(trackingNumber);
+    },
+
+    deleteShipmentFile(trackingNumber, fileId) {
+      const current = this.getShipment(trackingNumber);
+      if (!current) {
+        return null;
+      }
+
+      const file = this.getShipmentFile(trackingNumber, fileId);
+      if (!file) {
+        return false;
+      }
+
+      deleteShipmentFileById.run(trackingNumber, fileId);
+      appendAuditLog("shipment.file.deleted", {
+        tracking_number: trackingNumber,
+        file_id: fileId,
+        file_name: file.file_name
       });
 
       return this.getShipmentFiles(trackingNumber);
