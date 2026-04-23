@@ -396,6 +396,24 @@ function createSupabaseDatabase(options) {
     return getShipment(trackingNumber);
   }
 
+  async function deleteShipment(trackingNumber) {
+    const current = await getShipment(trackingNumber);
+    if (!current) {
+      return false;
+    }
+
+    await request("DELETE", "shipments", {
+      query: { tracking_number: `eq.${trackingNumber}` },
+      prefer: "return=minimal"
+    });
+
+    appendAuditLog("shipment.deleted", {
+      tracking_number: trackingNumber
+    });
+
+    return true;
+  }
+
   async function getAllSuggestions() {
     await bootstrapIfEmpty();
     return request("GET", "suggestions", {
@@ -436,6 +454,7 @@ function createSupabaseDatabase(options) {
     getShipment,
     createShipment,
     updateShipment,
+    deleteShipment,
     getAllSuggestions,
     createSuggestion
   };

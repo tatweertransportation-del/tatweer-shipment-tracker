@@ -19,6 +19,10 @@ const TRANSLATIONS = {
     copyTrackingLink: "Copy Tracking Link",
     copyLinkSuccess: "Tracking link copied.",
     copyLinkError: "Unable to copy the tracking link.",
+    deleteShipment: "Delete",
+    deleteShipmentConfirm: "Delete this shipment permanently? This action cannot be undone.",
+    deleteShipmentSuccess: "Shipment deleted successfully.",
+    deleteShipmentError: "Unable to delete shipment.",
     trackingNotFoundTitle: "We could not find this shipment.",
     trackingNotFoundText: "Please check the tracking number or contact our support team on WhatsApp for help.",
     contactSupportNow: "Contact support now",
@@ -30,10 +34,10 @@ const TRANSLATIONS = {
     aboutTitle: "Reliable logistics solutions",
     aboutText:
       "Tatweer Logistics Services specializes in transport and logistics solutions, delivering professional services with quality, commitment, strong heavy-transport experience, equipped fleet, and a qualified team focused on trusted long-term partnerships.",
-    trustQuality: "Quality commitment",
-    trustFleet: "Equipped fleet",
-    trustTeam: "Qualified team",
-    trustPartnerships: "Trusted partnerships",
+    trustQuality: "✅ Quality commitment",
+    trustFleet: "🚚 Equipped fleet",
+    trustTeam: "👷 Qualified team",
+    trustPartnerships: "🤝 Trusted partnerships",
     searchHistory: "Search History",
     clearHistory: "Clear",
     supportTitle: "Need help with your cargo?",
@@ -53,7 +57,6 @@ const TRANSLATIONS = {
     submitSuggestion: "Send Suggestion",
     suggestionSuccess: "Your suggestion was sent successfully.",
     suggestionError: "Unable to send your suggestion.",
-    developerWhatsapp: "Talk to the developer on WhatsApp",
     updateTimeOnly: "Updates daily at 2:00 PM",
     exportExcel: "Export Excel",
     exportReady: "Excel file downloaded successfully.",
@@ -141,6 +144,10 @@ const TRANSLATIONS = {
     copyTrackingLink: "نسخ رابط التتبع",
     copyLinkSuccess: "تم نسخ رابط التتبع.",
     copyLinkError: "تعذر نسخ رابط التتبع.",
+    deleteShipment: "حذف",
+    deleteShipmentConfirm: "هل تريد حذف هذه الشحنة نهائيًا؟ لا يمكن التراجع عن هذا الإجراء.",
+    deleteShipmentSuccess: "تم حذف الشحنة بنجاح.",
+    deleteShipmentError: "تعذر حذف الشحنة.",
     trackingNotFoundTitle: "لم نتمكن من العثور على هذه الشحنة.",
     trackingNotFoundText: "يرجى التأكد من رقم الشحنة أو التواصل مع فريق الدعم عبر واتساب للمساعدة.",
     contactSupportNow: "تواصل مع الدعم الآن",
@@ -152,10 +159,10 @@ const TRANSLATIONS = {
     aboutTitle: "حلول لوجستية موثوقة",
     aboutText:
       "تطوير للخدمات اللوجستية هي شركة متخصصة في حلول النقل والخدمات اللوجستية، تقدم خدماتها باحترافية عالية وفق أعلى معايير الجودة والالتزام. تعتمد الشركة على خبرة قوية في مجال النقل الثقيل وإدارة العمليات اللوجستية، بما يضمن سرعة التنفيذ ودقة المواعيد وكفاءة التشغيل. وتسعى تطوير إلى تقديم خدمات موثوقة تلبي احتياجات العملاء في مختلف القطاعات، من خلال أسطول مجهز وفريق عمل مؤهل، مع التركيز على بناء شراكات طويلة الأمد قائمة على الثقة والتميز.",
-    trustQuality: "التزام بالجودة",
-    trustFleet: "أسطول مجهز",
-    trustTeam: "فريق مؤهل",
-    trustPartnerships: "شراكات طويلة الأمد",
+    trustQuality: "✅ التزام بالجودة",
+    trustFleet: "🚚 أسطول مجهز",
+    trustTeam: "👷 فريق مؤهل",
+    trustPartnerships: "🤝 شراكات طويلة الأمد",
     searchHistory: "سجل البحث",
     clearHistory: "مسح",
     supportTitle: "هل تحتاج مساعدة في شحنتك؟",
@@ -174,7 +181,6 @@ const TRANSLATIONS = {
     submitSuggestion: "إرسال الاقتراح",
     suggestionSuccess: "تم إرسال اقتراحك بنجاح.",
     suggestionError: "تعذر إرسال الاقتراح.",
-    developerWhatsapp: "التواصل مع المطور عبر واتساب",
     updateTimeOnly: "يتم التحديث يوميًا الساعة 2:00 ظهرًا",
     exportExcel: "استخراج إكسل",
     exportReady: "تم تنزيل ملف الإكسل بنجاح.",
@@ -403,7 +409,6 @@ function setLanguage(language) {
   if (page === "tracking") {
     renderSearchHistory();
     syncSupportWhatsappLink(document.getElementById("trackingInput")?.value || "");
-    syncDeveloperWhatsappLink();
     if (lastViewedShipment) {
       renderShipment(lastViewedShipment);
     }
@@ -578,21 +583,6 @@ function syncSupportWhatsappLink(trackingNumber = "") {
   whatsappLink.href = buildCustomerWhatsappLink(trackingNumber || "support");
 }
 
-function syncDeveloperWhatsappLink() {
-  const developerLink = document.getElementById("developerWhatsappLink");
-  if (!developerLink) {
-    return;
-  }
-
-  const developerPhone = APP_CONFIG.DEVELOPER_WHATSAPP_NUMBER || "01070761515";
-  const phone = normalizeWhatsappContactNumber(developerPhone);
-  const message =
-    currentLanguage === "ar"
-      ? "مرحبًا، لدي ملاحظة أو فكرة تخص نظام التتبع."
-      : "Hello, I have a note or idea about the tracking system.";
-  developerLink.href = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-}
-
 function renderShipment(shipment) {
   const headline = document.getElementById("trackingHeadline");
   const statusBadge = document.getElementById("statusBadge");
@@ -738,7 +728,6 @@ function setupTrackingPage() {
   renderSearchHistory();
   renderTimeline([]);
   syncSupportWhatsappLink();
-  syncDeveloperWhatsappLink();
 
   document.getElementById("trackingForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -913,6 +902,9 @@ function renderShipmentsTable(shipments) {
             <button class="text-btn" type="button" data-copy-tracking="${escapeHtml(shipment.tracking_number)}">
               ${t("copyTrackingLink")}
             </button>
+            <button class="text-btn danger-text-btn" type="button" data-delete-tracking="${escapeHtml(shipment.tracking_number)}">
+              ${t("deleteShipment")}
+            </button>
           </td>
         </tr>
       `;
@@ -978,6 +970,22 @@ async function loadAdminData() {
   renderSuggestionsTable(sortedSuggestions);
 }
 
+async function deleteShipmentFromAdmin(trackingNumber) {
+  if (!trackingNumber || !window.confirm(t("deleteShipmentConfirm"))) {
+    return;
+  }
+
+  try {
+    await api(`/api/shipments/${encodeURIComponent(trackingNumber)}`, {
+      method: "DELETE"
+    });
+    await loadAdminData();
+    notify(t("deleteShipmentSuccess"));
+  } catch (error) {
+    notify(`${t("deleteShipmentError")} ${error.message}`);
+  }
+}
+
 function setupAdminPage() {
   document.getElementById("loginForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -1021,9 +1029,15 @@ function setupAdminPage() {
   });
 
   document.getElementById("shipmentsTableBody")?.addEventListener("click", (event) => {
-    const target = event.target.closest("[data-copy-tracking]");
-    if (target) {
-      copyTrackingLink(target.dataset.copyTracking);
+    const copyTarget = event.target.closest("[data-copy-tracking]");
+    if (copyTarget) {
+      copyTrackingLink(copyTarget.dataset.copyTracking);
+      return;
+    }
+
+    const deleteTarget = event.target.closest("[data-delete-tracking]");
+    if (deleteTarget) {
+      deleteShipmentFromAdmin(deleteTarget.dataset.deleteTracking);
     }
   });
 

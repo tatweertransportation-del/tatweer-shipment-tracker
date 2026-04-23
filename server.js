@@ -232,7 +232,7 @@ function setCorsHeaders(req, res) {
     res.setHeader("Access-Control-Allow-Origin", requestOrigin);
     res.setHeader("Vary", "Origin");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   }
 }
 
@@ -284,8 +284,8 @@ function getExportLabels(language) {
   if (language === "ar") {
     return {
       workbookName: "تقرير شحنات تطوير",
-      shipmentsSheet: "الشحنات",
-      updatesSheet: "التحديثات",
+      shipmentsSheet: "ملخص الشحنات",
+      updatesSheet: "تفاصيل التحديثات",
       shipmentsHeaders: [
         "رقم الشحنة",
         "هاتف العميل",
@@ -294,15 +294,20 @@ function getExportLabels(language) {
         "آخر تحديث",
         "موعد التسليم",
         "اللغة المفضلة",
-        "نسبة التقدم"
+        "نسبة التقدم",
+        "ملاحظات داخلية",
+        "عدد التحديثات"
       ],
       updatesHeaders: [
         "رقم الشحنة",
+        "هاتف العميل",
         "التاريخ",
         "الحالة بالعربية",
         "الحالة بالإنجليزية",
         "الموقع",
-        "نسبة التقدم"
+        "نسبة التقدم",
+        "موعد التسليم",
+        "ملاحظات داخلية"
       ]
     };
   }
@@ -319,15 +324,20 @@ function getExportLabels(language) {
       "Last Update",
       "Delivery Date",
       "Preferred Language",
-      "Progress"
+      "Progress",
+      "Internal Notes",
+      "Updates Count"
     ],
     updatesHeaders: [
       "Tracking Number",
+      "Customer Phone",
       "Date",
       "Arabic Status",
       "English Status",
       "Location",
-      "Progress"
+      "Progress",
+      "Delivery Date",
+      "Internal Notes"
     ]
   };
 }
@@ -343,16 +353,26 @@ function buildSpreadsheetRow(cells, cellStyle = "data") {
   return `<Row>${xmlCells}</Row>`;
 }
 
-function buildWorksheetXml(name, headers, rows) {
+function buildColumnsXml(count) {
+  return Array.from({ length: count }, (_, index) => {
+    const width = index === 0 ? 135 : index === 1 ? 120 : index >= 2 && index <= 4 ? 180 : 130;
+    return `<Column ss:AutoFitWidth="0" ss:Width="${width}"/>`;
+  }).join("");
+}
+
+function buildWorksheetXml(name, headers, rows, language) {
   const headerRow = buildSpreadsheetRow(headers, "header");
   const bodyRows = rows.map((row) => buildSpreadsheetRow(row)).join("");
+  const direction = language === "ar" ? "<DisplayRightToLeft />" : "";
   return `
     <Worksheet ss:Name="${escapeXml(name)}">
       <Table>
+        ${buildColumnsXml(headers.length)}
         ${headerRow}
         ${bodyRows}
       </Table>
       <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+        ${direction}
         <FreezePanes />
         <FrozenNoSplit />
         <SplitHorizontal>1</SplitHorizontal>
@@ -374,17 +394,22 @@ function buildShipmentsWorkbookXml(shipments, language) {
     shipment.last_update_time,
     shipment.delivery_date,
     shipment.preferred_language,
-    computeProgress(shipment.history)
+    computeProgress(shipment.history),
+    shipment.internal_notes || "",
+    (shipment.history || []).length
   ]);
 
   const updateRows = shipments.flatMap((shipment) =>
     (shipment.history || []).map((update) => [
       shipment.tracking_number,
+      shipment.phone_number,
       update.timestamp,
       update.arabic_status,
       update.english_status,
       update.location || "",
-      Number.isFinite(Number(update.progress)) ? Number(update.progress) : ""
+      Number.isFinite(Number(update.progress)) ? Number(update.progress) : "",
+      shipment.delivery_date,
+      shipment.internal_notes || ""
     ])
   );
 
@@ -397,29 +422,32 @@ function buildShipmentsWorkbookXml(shipments, language) {
  xmlns:html="http://www.w3.org/TR/REC-html40">
   <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
     <Author>Tatweer Tracking System</Author>
-    <Company>Tatweer Truck Transport Company</Company>
+    <Company>Tatweer Logistics Company</Company>
     <Title>${escapeXml(labels.workbookName)}</Title>
   </DocumentProperties>
   <Styles>
     <Style ss:ID="Default" ss:Name="Normal">
       <Alignment ss:Vertical="Center" ss:WrapText="1"/>
-      <Borders/>
-      <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#1F1F1F"/>
+      <Borders>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E6D5CC"/>
+      </Borders>
+      <Font ss:FontName="${language === "ar" ? "Cairo" : "Calibri"}" ss:Size="11" ss:Color="#1F1F1F"/>
       <Interior/>
       <NumberFormat/>
       <Protection/>
     </Style>
     <Style ss:ID="header">
       <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
-      <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/>
+      <Font ss:FontName="${language === "ar" ? "Cairo" : "Calibri"}" ss:Size="12" ss:Bold="1" ss:Color="#FFFFFF"/>
       <Interior ss:Color="#B97656" ss:Pattern="Solid"/>
     </Style>
     <Style ss:ID="data">
       <Alignment ss:Vertical="Center" ss:WrapText="1"/>
+      <Interior ss:Color="#FFF8F4" ss:Pattern="Solid"/>
     </Style>
   </Styles>
-  ${buildWorksheetXml(labels.shipmentsSheet, labels.shipmentsHeaders, shipmentRows)}
-  ${buildWorksheetXml(labels.updatesSheet, labels.updatesHeaders, updateRows)}
+  ${buildWorksheetXml(labels.shipmentsSheet, labels.shipmentsHeaders, shipmentRows, language)}
+  ${buildWorksheetXml(labels.updatesSheet, labels.updatesHeaders, updateRows, language)}
 </Workbook>`;
 }
 
@@ -631,6 +659,24 @@ const server = http.createServer(async (req, res) => {
         shipment: withDerivedFields(shipment, req),
         notification: null
       });
+      return;
+    }
+
+    if (pathname.startsWith("/api/shipments/") && req.method === "DELETE") {
+      const session = getSessionFromRequest(req);
+      if (!session) {
+        sendJson(res, 401, { error: "Unauthorized" });
+        return;
+      }
+
+      const trackingNumber = pathname.split("/").pop().toUpperCase();
+      const deleted = await database.deleteShipment(trackingNumber);
+      if (!deleted) {
+        sendJson(res, 404, { error: "Shipment not found" });
+        return;
+      }
+
+      sendJson(res, 200, { deleted: true });
       return;
     }
 

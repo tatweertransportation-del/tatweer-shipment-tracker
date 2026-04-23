@@ -125,8 +125,9 @@ function createSqliteDatabase(options) {
           english_status,
           last_update_time,
           delivery_date,
-          preferred_language
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+          preferred_language,
+          internal_notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `);
       const insertUpdate = db.prepare(`
         INSERT INTO shipment_updates (
@@ -149,7 +150,8 @@ function createSqliteDatabase(options) {
             shipment.english_status,
             shipment.last_update_time,
             shipment.delivery_date,
-            shipment.preferred_language === "en" ? "en" : "ar"
+            shipment.preferred_language === "en" ? "en" : "ar",
+            String(shipment.internal_notes || "").trim()
           );
 
           (shipment.history || []).forEach((update) => {
@@ -331,6 +333,8 @@ function createSqliteDatabase(options) {
     ) VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
 
+  const deleteShipmentStatement = db.prepare("DELETE FROM shipments WHERE tracking_number = ?");
+
   return {
     getAllShipments() {
       return shipmentsQuery.all().map(hydrateShipment);
@@ -463,6 +467,19 @@ function createSqliteDatabase(options) {
         progress
       });
       return this.getShipment(nextShipment.tracking_number);
+    },
+
+    deleteShipment(trackingNumber) {
+      const current = this.getShipment(trackingNumber);
+      if (!current) {
+        return false;
+      }
+
+      deleteShipmentStatement.run(trackingNumber);
+      appendAuditLog("shipment.deleted", {
+        tracking_number: trackingNumber
+      });
+      return true;
     },
 
     getAllSuggestions() {
