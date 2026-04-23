@@ -49,6 +49,9 @@ const TRANSLATIONS = {
     shipmentFilesWhatsappBlocked: "Documents were saved, but the browser blocked WhatsApp. Please allow pop-ups and try again.",
     shipmentFilesWhatsappReady: "Documents were saved. Click the WhatsApp button below to send the customer message.",
     openFilesWhatsapp: "Send documents message on WhatsApp",
+    uploadProgress: "Uploading file {current} of {total}: {name}",
+    uploadComplete: "Upload completed successfully.",
+    fileTooLarge: "The file \"{name}\" is too large. Please upload files up to {size} MB each.",
     currentShipmentFiles: "Current Shipment Files",
     deleteShipmentFile: "Delete file",
     deleteShipmentFileConfirm: "Delete this file from the shipment documents?",
@@ -221,6 +224,9 @@ const TRANSLATIONS = {
     shipmentFilesWhatsappBlocked: "تم حفظ أوراق الشحنة، لكن المتصفح منع فتح واتساب. برجاء السماح بالنوافذ المنبثقة والمحاولة مرة أخرى.",
     shipmentFilesWhatsappReady: "تم حفظ أوراق الشحنة. اضغط على زر واتساب بالأسفل لإرسال الرسالة للعميل.",
     openFilesWhatsapp: "إرسال رسالة الأوراق على واتساب",
+    uploadProgress: "جاري رفع الملف {current} من {total}: {name}",
+    uploadComplete: "تم رفع الملفات بنجاح.",
+    fileTooLarge: "الملف \"{name}\" حجمه كبير جدًا. برجاء رفع ملفات لا تتجاوز {size} ميجابايت لكل ملف.",
     currentShipmentFiles: "ملفات الشحنة الحالية",
     deleteShipmentFile: "حذف الملف",
     deleteShipmentFileConfirm: "هل تريد حذف هذا الملف من أوراق الشحنة؟",
@@ -353,6 +359,8 @@ const storageKeys = {
   token: "shipment-admin-token"
 };
 const APP_CONFIG = window.APP_CONFIG || {};
+const MAX_SHIPMENT_FILE_SIZE_MB = 18;
+const MAX_SHIPMENT_FILE_SIZE_BYTES = MAX_SHIPMENT_FILE_SIZE_MB * 1024 * 1024;
 
 let currentLanguage = localStorage.getItem(storageKeys.language) || "en";
 let currentTheme = localStorage.getItem(storageKeys.theme) || "dark";
@@ -522,6 +530,12 @@ function openCustomerUpdateWhatsapp(shipment, messageType = "update", bilingual 
 
 function t(key) {
   return TRANSLATIONS[currentLanguage][key] || key;
+}
+
+function interpolate(template, values = {}) {
+  return Object.entries(values).reduce((text, [key, value]) => {
+    return text.replaceAll(`{${key}}`, String(value));
+  }, template);
 }
 
 function setLanguage(language) {
@@ -748,6 +762,51 @@ function buildCustomerFilesWhatsappLink(phoneNumber, message) {
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
 
+function buildDocumentsLink(trackingNumber, password) {
+  const params = new URLSearchParams({ documents: trackingNumber });
+  if (password) {
+    params.set("password", password);
+  }
+  return `${window.location.origin}/?${params.toString()}`;
+}
+
+function buildShipmentFilesWhatsappMessage(trackingNumber, password) {
+  const documentsLink = buildDocumentsLink(trackingNumber, password);
+  if (currentLanguage === "en") {
+    return `Tatweer Logistics Services
+
+Dear customer,
+
+Your shipment documents are now available on Tatweer Tracking System.
+
+Shipment Number: ${trackingNumber}
+Documents Password: ${password}
+
+Open this secure link to view or download your shipment documents:
+${documentsLink}
+
+Important: This password is your responsibility. Please do not share it with anyone to protect your shipment papers and keep your personal data confidential.
+
+Thank you for choosing Tatweer Logistics Services.`;
+  }
+
+  return `تطوير للخدمات اللوجستية
+
+عزيزنا العميل،
+
+نود إبلاغكم بأن أوراق الشحنة أصبحت متاحة الآن على نظام Tatweer Tracking System.
+
+رقم الشحنة: ${trackingNumber}
+كلمة مرور الأوراق: ${password}
+
+افتح هذا الرابط الآمن لعرض أو تحميل أوراق الشحنة:
+${documentsLink}
+
+هام: كلمة المرور هي مسؤوليتك، يرجى عدم مشاركتها مع أي شخص حفاظًا على أوراقك وسرية بياناتك.
+
+شكرًا لاختياركم تطوير للخدمات اللوجستية.`;
+}
+
 function renderShipmentFilesWhatsappAction(whatsappUrl = "") {
   const container = document.getElementById("shipmentFilesWhatsappAction");
   if (!container) {
@@ -767,6 +826,15 @@ function renderShipmentFilesWhatsappAction(whatsappUrl = "") {
       ${t("openFilesWhatsapp")}
     </a>
   `;
+}
+
+function setShipmentFilesUploadStatus(message = "") {
+  const status = document.getElementById("shipmentFilesUploadStatus");
+  if (!status) {
+    return;
+  }
+  status.textContent = message;
+  status.classList.toggle("hidden", !message);
 }
 
 function renderAdminShipmentFiles(files = []) {
@@ -1491,22 +1559,43 @@ async function saveShipmentFilesFromAdmin() {
     throw new Error("Missing files data");
   }
 
-  let result;
-  try {
-    const payloadFiles = await Promise.all(files.map(fileToPayload));
+  const oversizedFile = files.find((file) => file.size > MAX_SHIPMENT_FILE_SIZE_BYTES);
+  if (oversizedFile) {
+    throw new Error(
+      interpolate(t("fileTooLarge"), {
+        name: oversizedFile.name,
+        size: MAX_SHIPMENT_FILE_SIZE_MB
+      })
+    );
+  }
+
+  let result = null;
+  for (const [index, file] of files.entries()) {
+    setShipmentFilesUploadStatus(
+      interpolate(t("uploadProgress"), {
+        current: index + 1,
+        total: files.length,
+        name: file.name
+      })
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const payloadFile = await fileToPayload(file);
     result = await api(`/api/admin/shipment-files/${encodeURIComponent(trackingNumber)}`, {
       method: "POST",
       body: JSON.stringify({
         password,
-        files: payloadFiles
+        files: [payloadFile]
       })
     });
-  } catch (error) {
-    throw error;
   }
 
   if (shouldOpenWhatsapp) {
-    const whatsappUrl = buildCustomerFilesWhatsappLink(result.phone_number, result.whatsapp_message);
+    const whatsappMessage = buildShipmentFilesWhatsappMessage(
+      trackingNumber,
+      result.documents_password || password
+    );
+    const whatsappUrl = buildCustomerFilesWhatsappLink(result.phone_number, whatsappMessage);
     if (!whatsappUrl) {
       result.whatsapp_warning = t("shipmentFilesWhatsappMissingPhone");
     } else {
@@ -1587,6 +1676,10 @@ function setupAdminPage() {
   document.getElementById("shipmentFilesForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     renderShipmentFilesWhatsappAction();
+    const submitButton = document.getElementById("saveShipmentFilesBtn");
+    if (submitButton) {
+      submitButton.disabled = true;
+    }
     try {
       const result = await saveShipmentFilesFromAdmin();
       event.target.reset();
@@ -1594,9 +1687,15 @@ function setupAdminPage() {
       renderAdminShipmentFiles(result.files || []);
       renderShipmentFilesWhatsappAction(result.whatsapp_url);
       const whatsappNote = result.whatsapp_warning || (result.whatsapp_ready ? ` ${t("shipmentFilesWhatsappReady")}` : "");
+      setShipmentFilesUploadStatus(t("uploadComplete"));
       notify(`${t("shipmentFilesSaved")}${whatsappNote ? ` ${whatsappNote}` : ""}`);
     } catch (error) {
+      setShipmentFilesUploadStatus("");
       notify(`${t("shipmentFilesError")} ${error.message}`);
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+      }
     }
   });
 

@@ -975,6 +975,13 @@ const server = http.createServer(async (req, res) => {
       }
 
       const messagePassword = password || currentAccess?.password_value || "";
+      if (!messagePassword) {
+        sendJson(res, 400, {
+          error:
+            "Documents password is missing. Please enter the documents password once, then future messages can reuse it."
+        });
+        return;
+      }
       const cleanFiles = files.map(sanitizeUploadedFile);
       const savedFiles = await database.replaceShipmentFiles(
         trackingNumber,
@@ -997,7 +1004,8 @@ const server = http.createServer(async (req, res) => {
           req,
           shipment?.preferred_language || "ar"
         ),
-        phone_number: shipment?.phone_number || ""
+        phone_number: shipment?.phone_number || "",
+        documents_password: messagePassword
       });
       return;
     }

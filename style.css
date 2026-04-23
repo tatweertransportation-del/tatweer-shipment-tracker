@@ -793,6 +793,18 @@ input[type="file"]::file-selector-button {
   cursor: pointer;
 }
 
+.upload-status {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+button:disabled,
+.primary-btn:disabled {
+  cursor: wait;
+  opacity: 0.65;
+  transform: none;
+}
+
 .checkbox-row {
   display: flex !important;
   align-items: center;
