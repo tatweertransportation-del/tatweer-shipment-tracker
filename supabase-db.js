@@ -107,6 +107,14 @@ function createSupabaseDatabase(options) {
         (data && typeof data === "object" && (data.message || data.error_description || data.error)) ||
         text ||
         "Supabase request failed";
+      if (
+        String(message).includes("schema cache") &&
+        (String(message).includes("shipment_files") || String(message).includes("shipment_file_access"))
+      ) {
+        throw new Error(
+          "Shipment documents tables are missing in Supabase. Run supabase-migration-shipment-files.sql in Supabase SQL Editor, then try again."
+        );
+      }
       throw new Error(message);
     }
 
