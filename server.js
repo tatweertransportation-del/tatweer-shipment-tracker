@@ -644,6 +644,40 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "GET" && pathname === "/api/ratings") {
+      const session = getSessionFromRequest(req);
+      if (!session) {
+        sendJson(res, 401, { error: "Unauthorized" });
+        return;
+      }
+      sendJson(res, 200, await database.getAllRatings());
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/ratings") {
+      const { tracking_number, rating, comment, language } = await readRequestBody(req);
+      const normalizedRating = Number(rating);
+      if (!tracking_number || !Number.isFinite(normalizedRating) || normalizedRating < 1 || normalizedRating > 5) {
+        sendJson(res, 400, { error: "Tracking number and rating from 1 to 5 are required" });
+        return;
+      }
+
+      const createdRating = await database.createRating({
+        tracking_number,
+        rating: normalizedRating,
+        comment,
+        language
+      });
+
+      if (!createdRating) {
+        sendJson(res, 404, { error: "Shipment not found" });
+        return;
+      }
+
+      sendJson(res, 201, createdRating);
+      return;
+    }
+
     if (req.method === "POST" && pathname === "/api/shipment-files/lookup") {
       const { tracking_number, password } = await readRequestBody(req);
       const trackingNumber = String(tracking_number || "").trim().toUpperCase();

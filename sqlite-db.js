@@ -110,6 +110,16 @@ function createSqliteDatabase(options) {
       updated_at TEXT NOT NULL,
       FOREIGN KEY (tracking_number) REFERENCES shipments(tracking_number) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS shipment_ratings (
+      id TEXT PRIMARY KEY,
+      tracking_number TEXT NOT NULL,
+      rating INTEGER NOT NULL,
+      comment TEXT NOT NULL DEFAULT '',
+      language TEXT NOT NULL DEFAULT 'ar',
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (tracking_number) REFERENCES shipments(tracking_number) ON DELETE CASCADE
+    );
   `);
 
   const shipmentColumns = db.prepare("PRAGMA table_info(shipments)").all();
@@ -400,6 +410,21 @@ function createSqliteDatabase(options) {
       uploaded_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
+  const ratingsQuery = db.prepare(`
+    SELECT id, tracking_number, rating, comment, language, created_at
+    FROM shipment_ratings
+    ORDER BY datetime(created_at) DESC, rowid DESC
+  `);
+  const insertRating = db.prepare(`
+    INSERT INTO shipment_ratings (
+      id,
+      tracking_number,
+      rating,
+      comment,
+      language,
+      created_at
+    ) VALUES (?, ?, ?, ?, ?, ?)
+  `);
 
   return {
     getAllShipments() {
@@ -646,6 +671,43 @@ function createSqliteDatabase(options) {
       });
 
       return this.getShipmentFiles(trackingNumber);
+    },
+
+    getAllRatings() {
+      return ratingsQuery.all();
+    },
+
+    createRating(payload) {
+      const trackingNumber = String(payload.tracking_number || "").trim().toUpperCase();
+      const current = this.getShipment(trackingNumber);
+      if (!current) {
+        return null;
+      }
+
+      const rating = {
+        id: crypto.randomUUID(),
+        tracking_number: trackingNumber,
+        rating: Math.max(1, Math.min(5, Number(payload.rating || 0))),
+        comment: String(payload.comment || "").trim(),
+        language: payload.language === "en" ? "en" : "ar",
+        created_at: new Date().toISOString()
+      };
+
+      insertRating.run(
+        rating.id,
+        rating.tracking_number,
+        rating.rating,
+        rating.comment,
+        rating.language,
+        rating.created_at
+      );
+
+      appendAuditLog("shipment.rating.created", {
+        tracking_number: rating.tracking_number,
+        rating: rating.rating
+      });
+
+      return rating;
     }
   };
 }

@@ -77,6 +77,19 @@ const TRANSLATIONS = {
     submitSuggestion: "Send Suggestion",
     suggestionSuccess: "Your suggestion was sent successfully.",
     suggestionError: "Unable to send your suggestion.",
+    ratingTitle: "Shipment Rating",
+    ratingHeadline: "Rate your shipment experience",
+    ratingText: "Your feedback helps us improve our logistics service.",
+    ratingComment: "Comment",
+    ratingPlaceholder: "Write your comment about the shipment experience.",
+    submitRating: "Submit Rating",
+    ratingSuccess: "Thank you. Your rating was submitted successfully.",
+    ratingError: "Unable to submit your rating.",
+    ratingsInbox: "Shipment Ratings",
+    ratingsInboxSubtitle: "Customer shipment experience ratings",
+    ratingDate: "Date",
+    ratingScore: "Rating",
+    noRatings: "No shipment ratings yet.",
     updateTimeOnly: "Updates daily at {time} your local time, equivalent to 2:00 PM Egypt time",
     exportExcel: "Export Excel",
     exportReady: "Excel file downloaded successfully.",
@@ -223,6 +236,19 @@ const TRANSLATIONS = {
     submitSuggestion: "إرسال الاقتراح",
     suggestionSuccess: "تم إرسال اقتراحك بنجاح.",
     suggestionError: "تعذر إرسال الاقتراح.",
+    ratingTitle: "تقييم الشحنة",
+    ratingHeadline: "قيّم تجربة الشحنة",
+    ratingText: "تقييمك يساعدنا على تحسين خدماتنا اللوجستية.",
+    ratingComment: "التعليق",
+    ratingPlaceholder: "اكتب تعليقك عن تجربة الشحنة.",
+    submitRating: "إرسال التقييم",
+    ratingSuccess: "شكرًا لك. تم إرسال تقييمك بنجاح.",
+    ratingError: "تعذر إرسال التقييم.",
+    ratingsInbox: "تقييمات الشحنات",
+    ratingsInboxSubtitle: "تقييمات العملاء لتجربة الشحن",
+    ratingDate: "التاريخ",
+    ratingScore: "التقييم",
+    noRatings: "لا توجد تقييمات حتى الآن.",
     updateTimeOnly: "يتم التحديث يوميًا الساعة {time} بتوقيتك المحلي، بما يعادل 2:00 ظهرًا بتوقيت مصر",
     exportExcel: "استخراج إكسل",
     exportReady: "تم تنزيل ملف الإكسل بنجاح.",
@@ -309,7 +335,8 @@ let currentTheme = localStorage.getItem(storageKeys.theme) || "dark";
 let lastViewedShipment = null;
 let adminState = {
   shipments: [],
-  suggestions: []
+  suggestions: [],
+  ratings: []
 };
 
 function normalizeBaseUrl(value) {
@@ -507,6 +534,7 @@ function setLanguage(language) {
     renderAnalytics(adminState.shipments, adminState.suggestions);
     renderShipmentsTable(adminState.shipments);
     renderSuggestionsTable(adminState.suggestions);
+    renderRatingsTable(adminState.ratings);
   }
 }
 
@@ -810,6 +838,30 @@ function renderDocuments(files, trackingNumber, password) {
     .join("");
 }
 
+function setRatingStars(value) {
+  const rating = Math.max(1, Math.min(5, Number(value || 5)));
+  const input = document.getElementById("ratingValueInput");
+  if (input) {
+    input.value = String(rating);
+  }
+
+  document.querySelectorAll("#ratingStars [data-rating]").forEach((button) => {
+    button.classList.toggle("active", Number(button.dataset.rating) <= rating);
+  });
+}
+
+async function submitRating() {
+  return api("/api/ratings", {
+    method: "POST",
+    body: JSON.stringify({
+      tracking_number: document.getElementById("ratingTrackingInput")?.value || "",
+      rating: Number(document.getElementById("ratingValueInput")?.value || 5),
+      comment: document.getElementById("ratingCommentInput")?.value || "",
+      language: currentLanguage
+    })
+  });
+}
+
 async function lookupDocuments(trackingNumber, password) {
   const result = await api("/api/shipment-files/lookup", {
     method: "POST",
@@ -958,6 +1010,27 @@ function setupTrackingPage() {
     }
   });
 
+  setRatingStars(5);
+
+  document.getElementById("ratingStars")?.addEventListener("click", (event) => {
+    const target = event.target.closest("[data-rating]");
+    if (target) {
+      setRatingStars(target.dataset.rating);
+    }
+  });
+
+  document.getElementById("ratingForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      await submitRating();
+      event.target.reset();
+      setRatingStars(5);
+      notify(t("ratingSuccess"));
+    } catch (error) {
+      notify(`${t("ratingError")} ${error.message}`);
+    }
+  });
+
   document.getElementById("copyTrackingLinkBtn")?.addEventListener("click", (event) => {
     const trackingNumber = event.currentTarget.dataset.trackingNumber;
     if (trackingNumber) {
@@ -1001,6 +1074,10 @@ function setupTrackingPage() {
     const documentsTrackingInput = document.getElementById("documentsTrackingInput");
     if (documentsTrackingInput) {
       documentsTrackingInput.value = trackingFromUrl;
+    }
+    const ratingTrackingInput = document.getElementById("ratingTrackingInput");
+    if (ratingTrackingInput) {
+      ratingTrackingInput.value = trackingFromUrl;
     }
     const suggestionTrackingInput = document.getElementById("suggestionTrackingInput");
     if (suggestionTrackingInput) {
@@ -1173,10 +1250,40 @@ function renderSuggestionsTable(suggestions) {
     .join("");
 }
 
+function renderRatingsTable(ratings) {
+  const body = document.getElementById("ratingsTableBody");
+  if (!body) {
+    return;
+  }
+
+  if (!ratings.length) {
+    body.innerHTML = `
+      <tr>
+        <td colspan="4" class="empty-table">${t("noRatings")}</td>
+      </tr>
+    `;
+    return;
+  }
+
+  body.innerHTML = ratings
+    .map(
+      (item) => `
+        <tr>
+          <td>${formatDate(item.created_at)}</td>
+          <td>${escapeHtml(item.tracking_number)}</td>
+          <td><span class="rating-readonly">${"★".repeat(Number(item.rating || 0))}${"☆".repeat(5 - Number(item.rating || 0))}</span></td>
+          <td>${escapeHtml(item.comment || "--")}</td>
+        </tr>
+      `
+    )
+    .join("");
+}
+
 async function loadAdminData() {
-  const [shipments, suggestions] = await Promise.all([
+  const [shipments, suggestions, ratings] = await Promise.all([
     api("/api/shipments"),
-    api("/api/suggestions")
+    api("/api/suggestions"),
+    api("/api/ratings")
   ]);
 
   const sortedShipments = shipments.sort((first, second) => {
@@ -1189,7 +1296,8 @@ async function loadAdminData() {
 
   adminState = {
     shipments: sortedShipments,
-    suggestions: sortedSuggestions
+    suggestions: sortedSuggestions,
+    ratings
   };
 
   renderShipmentOptions(sortedShipments);
@@ -1197,6 +1305,7 @@ async function loadAdminData() {
   renderAnalytics(sortedShipments, sortedSuggestions);
   renderShipmentsTable(sortedShipments);
   renderSuggestionsTable(sortedSuggestions);
+  renderRatingsTable(ratings);
 }
 
 async function deleteShipmentFromAdmin(trackingNumber) {

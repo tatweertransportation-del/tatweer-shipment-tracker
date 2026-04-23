@@ -109,10 +109,12 @@ function createSupabaseDatabase(options) {
         "Supabase request failed";
       if (
         String(message).includes("schema cache") &&
-        (String(message).includes("shipment_files") || String(message).includes("shipment_file_access"))
+        (String(message).includes("shipment_files") ||
+          String(message).includes("shipment_file_access") ||
+          String(message).includes("shipment_ratings"))
       ) {
         throw new Error(
-          "Shipment documents tables are missing in Supabase. Run supabase-migration-shipment-files.sql in Supabase SQL Editor, then try again."
+          "Shipment extra tables are missing in Supabase. Run the latest Supabase migration SQL files in Supabase SQL Editor, then try again."
         );
       }
       throw new Error(message);
@@ -536,6 +538,44 @@ function createSupabaseDatabase(options) {
     return getShipmentFiles(trackingNumber);
   }
 
+  async function getAllRatings() {
+    return request("GET", "shipment_ratings", {
+      query: {
+        select: "id,tracking_number,rating,comment,language,created_at",
+        order: "created_at.desc"
+      }
+    });
+  }
+
+  async function createRating(payload) {
+    const trackingNumber = String(payload.tracking_number || "").trim().toUpperCase();
+    const current = await getShipment(trackingNumber);
+    if (!current) {
+      return null;
+    }
+
+    const rating = {
+      id: crypto.randomUUID(),
+      tracking_number: trackingNumber,
+      rating: Math.max(1, Math.min(5, Number(payload.rating || 0))),
+      comment: String(payload.comment || "").trim(),
+      language: payload.language === "en" ? "en" : "ar",
+      created_at: new Date().toISOString()
+    };
+
+    await request("POST", "shipment_ratings", {
+      body: rating,
+      prefer: "return=minimal"
+    });
+
+    appendAuditLog("shipment.rating.created", {
+      tracking_number: rating.tracking_number,
+      rating: rating.rating
+    });
+
+    return rating;
+  }
+
   return {
     getAllShipments,
     getShipment,
@@ -547,7 +587,9 @@ function createSupabaseDatabase(options) {
     getShipmentFiles,
     getShipmentFile,
     getShipmentFileAccess,
-    replaceShipmentFiles
+    replaceShipmentFiles,
+    getAllRatings,
+    createRating
   };
 }
 

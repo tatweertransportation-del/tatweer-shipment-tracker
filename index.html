@@ -181,6 +181,33 @@
           <div id="documentsResult" class="documents-list"></div>
         </section>
 
+        <section class="glass-card rating-section">
+          <div>
+            <p class="card-label" data-i18n="ratingTitle">Shipment Rating</p>
+            <h3 data-i18n="ratingHeadline">Rate your shipment experience</h3>
+            <p data-i18n="ratingText">Your feedback helps us improve our logistics service.</p>
+          </div>
+          <form id="ratingForm" class="stack-form rating-form">
+            <label>
+              <span data-i18n="trackingNumber">Tracking Number</span>
+              <input type="text" id="ratingTrackingInput" required />
+            </label>
+            <div class="rating-stars" id="ratingStars" role="radiogroup" aria-label="Shipment rating">
+              <button type="button" data-rating="1">★</button>
+              <button type="button" data-rating="2">★</button>
+              <button type="button" data-rating="3">★</button>
+              <button type="button" data-rating="4">★</button>
+              <button type="button" data-rating="5">★</button>
+            </div>
+            <input type="hidden" id="ratingValueInput" value="5" />
+            <label>
+              <span data-i18n="ratingComment">Comment</span>
+              <textarea id="ratingCommentInput" rows="4" data-i18n-placeholder="ratingPlaceholder" placeholder="Write your comment about the shipment experience."></textarea>
+            </label>
+            <button class="primary-btn" type="submit" data-i18n="submitRating">Submit Rating</button>
+          </form>
+        </section>
+
         <section class="glass-card suggestions-section">
           <div class="suggestions-feature-card">
             <p class="card-label" data-i18n="suggestionsTitle">Suggestions and Feedback</p>

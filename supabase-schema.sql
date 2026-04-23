@@ -48,11 +48,21 @@ create table if not exists public.shipment_file_access (
   updated_at timestamptz not null
 );
 
+create table if not exists public.shipment_ratings (
+  id uuid primary key,
+  tracking_number text not null references public.shipments(tracking_number) on delete cascade,
+  rating integer not null check (rating between 1 and 5),
+  comment text not null default '',
+  language text not null default 'ar',
+  created_at timestamptz not null
+);
+
 alter table public.shipments enable row level security;
 alter table public.shipment_updates enable row level security;
 alter table public.suggestions enable row level security;
 alter table public.shipment_files enable row level security;
 alter table public.shipment_file_access enable row level security;
+alter table public.shipment_ratings enable row level security;
 
 create policy "service role full access shipments"
 on public.shipments
@@ -84,6 +94,13 @@ with check (true);
 
 create policy "service role full access shipment_file_access"
 on public.shipment_file_access
+for all
+to service_role
+using (true)
+with check (true);
+
+create policy "service role full access shipment_ratings"
+on public.shipment_ratings
 for all
 to service_role
 using (true)
