@@ -1443,10 +1443,8 @@ async function saveShipmentFilesFromAdmin() {
   const input = document.getElementById("shipmentFilesInput");
   const files = Array.from(input.files || []);
   const shouldOpenWhatsapp = Boolean(document.getElementById("sendFilesWhatsappCheckbox")?.checked);
-  const whatsappWindow = shouldOpenWhatsapp ? window.open("", "_blank") : null;
 
   if (!trackingNumber || !files.length) {
-    whatsappWindow?.close();
     throw new Error("Missing files data");
   }
 
@@ -1461,22 +1459,19 @@ async function saveShipmentFilesFromAdmin() {
       })
     });
   } catch (error) {
-    whatsappWindow?.close();
     throw error;
   }
 
   if (shouldOpenWhatsapp) {
     const whatsappUrl = buildCustomerFilesWhatsappLink(result.phone_number, result.whatsapp_message);
     if (!whatsappUrl) {
-      whatsappWindow?.close();
       result.whatsapp_warning = t("shipmentFilesWhatsappMissingPhone");
-    } else if (whatsappWindow) {
-      whatsappWindow.opener = null;
-      whatsappWindow.location.href = whatsappUrl;
-      result.whatsapp_opened = true;
     } else {
-      window.open(whatsappUrl, "_blank", "noopener");
-      result.whatsapp_warning = t("shipmentFilesWhatsappBlocked");
+      const openedWindow = window.open(whatsappUrl, "_blank", "noopener");
+      result.whatsapp_opened = Boolean(openedWindow);
+      if (!openedWindow) {
+        result.whatsapp_warning = t("shipmentFilesWhatsappBlocked");
+      }
     }
   }
 
