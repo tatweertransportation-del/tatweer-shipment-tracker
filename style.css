@@ -142,10 +142,11 @@ body[dir="rtl"] .card-label {
 
 .brand {
   margin: 10px 0 0;
-  font-size: clamp(1.95rem, 3.35vw, 3.2rem);
+  font-size: clamp(1.7rem, 2.7vw, 2.95rem);
   letter-spacing: 0.02em;
   line-height: 1.18;
-  max-width: 12ch;
+  max-width: none;
+  white-space: nowrap;
 }
 
 .brand-subtitle {
@@ -998,7 +999,7 @@ tbody tr:hover {
   }
 
   .brand {
-    max-width: none;
+    white-space: normal;
     font-size: clamp(1.9rem, 8vw, 2.6rem);
   }
 
