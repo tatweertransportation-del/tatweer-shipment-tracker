@@ -1250,16 +1250,42 @@ function setupTrackingPage() {
   renderTimeline([]);
   syncSupportWhatsappLink();
 
-  document.querySelectorAll("[data-customer-tab]").forEach((button) => {
+  const customerTabs = Array.from(document.querySelectorAll("[data-customer-tab]"));
+  const customerPanels = Array.from(document.querySelectorAll("[data-customer-panel]"));
+
+  const setActiveCustomerTab = (selectedTab) => {
+    customerTabs.forEach((tabButton) => {
+      tabButton.classList.toggle("active", tabButton.dataset.customerTab === selectedTab);
+    });
+  };
+
+  customerTabs.forEach((button) => {
     button.addEventListener("click", () => {
       const selectedTab = button.dataset.customerTab;
-      document.querySelectorAll("[data-customer-tab]").forEach((tabButton) => {
-        tabButton.classList.toggle("active", tabButton === button);
-      });
-      document.querySelectorAll("[data-customer-panel]").forEach((panel) => {
-        panel.classList.toggle("active", panel.dataset.customerPanel === selectedTab);
-      });
+      const selectedPanel = customerPanels.find((panel) => panel.dataset.customerPanel === selectedTab);
+      setActiveCustomerTab(selectedTab);
+      selectedPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
+  });
+
+  const customerSectionObserver = new IntersectionObserver(
+    (entries) => {
+      const visibleEntry = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((first, second) => second.intersectionRatio - first.intersectionRatio)[0];
+
+      if (visibleEntry?.target?.dataset?.customerPanel) {
+        setActiveCustomerTab(visibleEntry.target.dataset.customerPanel);
+      }
+    },
+    {
+      rootMargin: "-25% 0px -55% 0px",
+      threshold: [0.2, 0.4, 0.6]
+    }
+  );
+
+  customerPanels.forEach((panel) => {
+    customerSectionObserver.observe(panel);
   });
 
   document.getElementById("trackingForm")?.addEventListener("submit", async (event) => {
@@ -1386,7 +1412,8 @@ function setupTrackingPage() {
   }
 
   if (documentsFromUrl) {
-    document.querySelector('[data-customer-tab="documents"]')?.click();
+    setActiveCustomerTab("documents");
+    document.querySelector('[data-customer-panel="documents"]')?.scrollIntoView({ behavior: "smooth", block: "start" });
     const documentsTrackingInput = document.getElementById("documentsTrackingInput");
     const documentsPasswordInput = document.getElementById("documentsPasswordInput");
     if (documentsTrackingInput) {

@@ -395,11 +395,7 @@ textarea {
 }
 
 .customer-tab-panel {
-  display: none;
-}
-
-.customer-tab-panel.active {
-  display: grid;
+  scroll-margin-top: 120px;
 }
 
 .status-chips span {
