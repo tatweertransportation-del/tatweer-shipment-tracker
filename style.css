@@ -124,9 +124,9 @@ body[dir="rtl"] .card-label {
 }
 
 .brand-logo {
-  width: clamp(180px, 22vw, 290px);
+  width: clamp(210px, 25vw, 330px);
   height: auto;
-  max-height: 170px;
+  max-height: 190px;
   display: block;
   object-fit: contain;
   border-radius: 0;
@@ -983,8 +983,8 @@ tbody tr:hover {
   }
 
   .brand-logo {
-    width: min(190px, 64vw);
-    max-height: 120px;
+    width: min(210px, 68vw);
+    max-height: 132px;
   }
 
   .brand-lockup {
