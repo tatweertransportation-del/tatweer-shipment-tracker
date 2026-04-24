@@ -90,8 +90,9 @@ body[dir="rtl"] {
 }
 
 .topbar {
-  gap: 16px;
-  margin-bottom: 22px;
+  gap: 28px;
+  margin-bottom: 26px;
+  align-items: center;
 }
 
 .eyebrow,
@@ -117,35 +118,41 @@ body[dir="rtl"] .card-label {
 .brand-lockup {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: clamp(20px, 3vw, 42px);
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .brand-logo {
-  width: clamp(240px, 30vw, 420px);
+  width: clamp(180px, 22vw, 290px);
   height: auto;
-  max-height: 250px;
+  max-height: 170px;
   display: block;
   object-fit: contain;
   border-radius: 0;
   filter: drop-shadow(0 8px 20px rgba(16, 10, 9, 0.24));
+  flex: 0 0 auto;
 }
 
 .brand-copy {
   min-width: 0;
+  flex: 1 1 520px;
+  max-width: 640px;
 }
 
 .brand {
-  margin: 6px 0 0;
-  font-size: clamp(1.75rem, 3vw, 2.6rem);
+  margin: 10px 0 0;
+  font-size: clamp(1.95rem, 3.35vw, 3.2rem);
   letter-spacing: 0.02em;
+  line-height: 1.18;
+  max-width: 12ch;
 }
 
 .brand-subtitle {
-  margin: 6px 0 0;
+  margin: 14px 0 0;
   color: var(--muted);
-  font-size: 0.88rem;
-  letter-spacing: 0.28em;
+  font-size: 0.9rem;
+  letter-spacing: 0.32em;
   text-transform: uppercase;
 }
 
@@ -159,6 +166,12 @@ body[dir="rtl"] .brand-subtitle {
 .analytics-grid,
 .metrics-grid {
   gap: 12px;
+}
+
+.topbar-actions {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  padding-top: 6px;
 }
 
 .ghost-btn,
@@ -934,12 +947,15 @@ tbody tr:hover {
   }
 
   .brand-lockup {
-    align-items: flex-start;
+    align-items: center;
+    width: 100%;
   }
 
   .topbar-actions {
     justify-content: flex-start;
     flex-wrap: wrap;
+    align-self: stretch;
+    padding-top: 0;
   }
 }
 
@@ -966,8 +982,29 @@ tbody tr:hover {
   }
 
   .brand-logo {
-    width: min(230px, 76vw);
+    width: min(190px, 64vw);
     max-height: 120px;
+  }
+
+  .brand-lockup {
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    text-align: center;
+  }
+
+  .brand-copy {
+    max-width: 100%;
+  }
+
+  .brand {
+    max-width: none;
+    font-size: clamp(1.9rem, 8vw, 2.6rem);
+  }
+
+  .brand-subtitle,
+  .eyebrow {
+    text-align: center;
   }
 
   .card-head,
