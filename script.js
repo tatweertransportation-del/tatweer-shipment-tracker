@@ -1,6 +1,9 @@
 const TRANSLATIONS = {
   en: {
     brandTag: "Global Freight Visibility",
+    brandTitle: "Tatweer Shipment Tracking Portal",
+    brandSubtitle: "Logistics Company",
+    adminBrandTitle: "Tatweer Tracking System Admin",
     adminLink: "Admin",
     heroBadge: "Live Shipment Intelligence",
     heroTitle: "Track Every Milestone with Confidence",
@@ -193,6 +196,9 @@ const TRANSLATIONS = {
   },
   ar: {
     brandTag: "متابعة عالمية للشحنات",
+    brandTitle: "بوابة تتبع شحنات تطوير",
+    brandSubtitle: "شركة لوجستية",
+    adminBrandTitle: "لوحة إدارة نظام تتبع تطوير",
     adminLink: "لوحة الإدارة",
     heroBadge: "معلومات فورية للشحنة",
     heroTitle: "تابع كل مرحلة بثقة ووضوح",
