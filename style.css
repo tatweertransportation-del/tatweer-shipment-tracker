@@ -16,6 +16,7 @@
   --radius-xl: 28px;
   --radius-lg: 22px;
   --radius-md: 16px;
+  --admin-scroll-height: 360px;
 }
 
 body.light-mode {
@@ -516,6 +517,12 @@ textarea {
   margin-top: 16px;
 }
 
+body[data-page="admin"] .dashboard-activity-card .activity-list {
+  max-height: var(--admin-scroll-height);
+  overflow-y: auto;
+  padding-inline-end: 6px;
+}
+
 .activity-item {
   display: flex;
   align-items: center;
@@ -871,6 +878,12 @@ body.light-mode .status-badge {
   margin-top: 18px;
 }
 
+body[data-page="admin"] .admin-files-preview {
+  max-height: var(--admin-scroll-height);
+  overflow-y: auto;
+  padding-inline-end: 6px;
+}
+
 .admin-files-preview h4 {
   margin: 0 0 12px;
 }
@@ -1101,7 +1114,24 @@ button:disabled,
 }
 
 .table-wrap {
-  overflow-x: auto;
+  overflow: auto;
+}
+
+body[data-page="admin"] .table-wrap {
+  max-height: var(--admin-scroll-height);
+  border-radius: 18px;
+  padding-inline-end: 4px;
+}
+
+body[data-page="admin"] .table-wrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-strong);
+}
+
+body.light-mode[data-page="admin"] .table-wrap thead th {
+  background: rgba(255, 250, 247, 0.96);
 }
 
 table {
