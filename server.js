@@ -33,6 +33,8 @@ const RATE_LIMIT_WINDOWS = {
   }
 };
 const rateLimitStore = new Map();
+const AUTH_COOKIE_NAME = "tatweer_admin_session";
+const CSRF_COOKIE_NAME = "tatweer_admin_csrf";
 
 const database = createDatabase({
   dbPath: DATABASE_FILE,
@@ -110,9 +112,14 @@ function verifyAdminCredentials(username, password) {
   return safeCompare(password, process.env.ADMIN_PASSWORD);
 }
 
-function createSessionToken(username) {
+function createRandomToken(size = 32) {
+  return crypto.randomBytes(size).toString("base64url");
+}
+
+function createSessionToken(username, csrfToken) {
   const payload = {
     username,
+    csrf: csrfToken,
     exp: Date.now() + 1000 * 60 * 60 * 12
   };
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -273,6 +280,89 @@ function sendBinary(res, statusCode, body, contentType, fileName, forceDownload 
     "Cache-Control": "private, no-store"
   });
   res.end(body);
+}
+
+function parseCookies(req) {
+  const header = String(req.headers.cookie || "");
+  return header.split(";").reduce((cookies, entry) => {
+    const separatorIndex = entry.indexOf("=");
+    if (separatorIndex === -1) {
+      return cookies;
+    }
+    const key = entry.slice(0, separatorIndex).trim();
+    const value = entry.slice(separatorIndex + 1).trim();
+    if (!key) {
+      return cookies;
+    }
+    try {
+      cookies[key] = decodeURIComponent(value);
+    } catch (error) {
+      cookies[key] = value;
+    }
+    return cookies;
+  }, {});
+}
+
+function serializeCookie(name, value, options = {}) {
+  const parts = [`${name}=${encodeURIComponent(value)}`];
+  if (options.maxAge !== undefined) {
+    parts.push(`Max-Age=${Math.max(0, Math.floor(options.maxAge))}`);
+  }
+  if (options.httpOnly) {
+    parts.push("HttpOnly");
+  }
+  if (options.secure) {
+    parts.push("Secure");
+  }
+  if (options.sameSite) {
+    parts.push(`SameSite=${options.sameSite}`);
+  }
+  parts.push(`Path=${options.path || "/"}`);
+  return parts.join("; ");
+}
+
+function isSecureRequest(req) {
+  return (req.headers["x-forwarded-proto"] || "").toLowerCase() === "https" || Boolean(req.socket.encrypted);
+}
+
+function setAuthCookies(res, req, sessionToken, csrfToken) {
+  const secure = isSecureRequest(req);
+  res.setHeader("Set-Cookie", [
+    serializeCookie(AUTH_COOKIE_NAME, sessionToken, {
+      httpOnly: true,
+      secure,
+      sameSite: "Strict",
+      path: "/",
+      maxAge: 60 * 60 * 12
+    }),
+    serializeCookie(CSRF_COOKIE_NAME, csrfToken, {
+      httpOnly: false,
+      secure,
+      sameSite: "Strict",
+      path: "/",
+      maxAge: 60 * 60 * 12
+    })
+  ]);
+}
+
+function clearAuthCookies(res, req) {
+  const secure = isSecureRequest(req);
+  res.setHeader("Set-Cookie", [
+    serializeCookie(AUTH_COOKIE_NAME, "", {
+      httpOnly: true,
+      secure,
+      sameSite: "Strict",
+      path: "/",
+      maxAge: 0
+    }),
+    serializeCookie(CSRF_COOKIE_NAME, "", {
+      httpOnly: false,
+      secure,
+      sameSite: "Strict",
+      path: "/",
+      maxAge: 0
+    })
+  ]);
 }
 
 function setSecurityHeaders(req, res) {
@@ -631,10 +721,96 @@ function setCorsHeaders(req, res) {
   }
 }
 
+function getCsrfTokenFromRequest(req) {
+  return String(req.headers["x-csrf-token"] || "").trim();
+}
+
+function isTrustedOrigin(req) {
+  const origin = String(req.headers.origin || "").trim();
+  if (!origin) {
+    return true;
+  }
+  const requestOrigin = deriveRequestOrigin(req);
+  return origin === requestOrigin || ALLOWED_ORIGINS.includes(origin);
+}
+
 function getSessionFromRequest(req) {
+  const cookies = parseCookies(req);
   const authHeader = req.headers.authorization || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const headerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  const token = cookies[AUTH_COOKIE_NAME] || headerToken;
   return verifySessionToken(token);
+}
+
+function requireCsrf(req, res, session) {
+  if (!isTrustedOrigin(req)) {
+    sendJson(res, 403, { error: "Untrusted origin" });
+    return false;
+  }
+  const cookies = parseCookies(req);
+  const csrfCookie = String(cookies[CSRF_COOKIE_NAME] || "");
+  const csrfHeader = getCsrfTokenFromRequest(req);
+  if (!session?.csrf || !csrfCookie || !csrfHeader) {
+    sendJson(res, 403, { error: "Invalid security token" });
+    return false;
+  }
+  if (!safeCompare(session.csrf, csrfCookie) || !safeCompare(session.csrf, csrfHeader)) {
+    sendJson(res, 403, { error: "Invalid security token" });
+    return false;
+  }
+  return true;
+}
+
+function normalizeTrackingNumber(value) {
+  return String(value || "")
+    .trim()
+    .toUpperCase();
+}
+
+function isValidTrackingNumber(value) {
+  return /^[A-Z0-9-]{3,40}$/.test(value);
+}
+
+function sanitizeText(value, maxLength = 250) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function sanitizeMultilineText(value, maxLength = 1000) {
+  return String(value || "")
+    .replace(/\r/g, "")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function sanitizePhoneNumber(value) {
+  const normalized = String(value || "").replace(/[^\d+]/g, "").trim();
+  return normalized.slice(0, 18);
+}
+
+function isValidPhoneNumber(value) {
+  return /^\+?\d{8,18}$/.test(value);
+}
+
+function sanitizeLanguage(value) {
+  return value === "en" ? "en" : "ar";
+}
+
+function normalizeProgressValue(value) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+  const normalized = Number(value);
+  if (!Number.isFinite(normalized)) {
+    return null;
+  }
+  return Math.max(0, Math.min(100, Math.round(normalized)));
+}
+
+function isValidIsoDate(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || "").trim());
 }
 
 function isPublicAsset(filePath) {
@@ -868,12 +1044,21 @@ const server = http.createServer(async (req, res) => {
       if (applyRateLimit(req, res, "login")) {
         return;
       }
+      if (!isTrustedOrigin(req)) {
+        sendJson(res, 403, { error: "Untrusted origin" });
+        return;
+      }
 
       const { username, password } = await readRequestBody(req);
-      if (verifyAdminCredentials(username, password)) {
+      const normalizedUsername = sanitizeText(username, 64);
+      if (verifyAdminCredentials(normalizedUsername, password)) {
+        const csrfToken = createRandomToken(24);
+        const sessionToken = createSessionToken(normalizedUsername, csrfToken);
+        setAuthCookies(res, req, sessionToken, csrfToken);
         sendJson(res, 200, {
-          token: createSessionToken(username),
-          username
+          authenticated: true,
+          username: normalizedUsername,
+          csrf_token: csrfToken
         });
         return;
       }
@@ -887,7 +1072,21 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, 401, { error: "Unauthorized" });
         return;
       }
-      sendJson(res, 200, { authenticated: true, username: session.username });
+      sendJson(res, 200, {
+        authenticated: true,
+        username: session.username,
+        csrf_token: session.csrf
+      });
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/logout") {
+      const session = getSessionFromRequest(req);
+      if (session && !requireCsrf(req, res, session)) {
+        return;
+      }
+      clearAuthCookies(res, req);
+      sendJson(res, 200, { ok: true });
       return;
     }
 
@@ -958,6 +1157,9 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, 401, { error: "Unauthorized" });
         return;
       }
+      if (!requireCsrf(req, res, session)) {
+        return;
+      }
       const backup = await readRequestBodyWithLimit(req, 80 * 1024 * 1024);
       const restored = await database.restoreBackup(backup);
       sendJson(res, 200, {
@@ -990,17 +1192,23 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && pathname === "/api/ratings") {
       const { tracking_number, rating, comment, language } = await readRequestBody(req);
+      const normalizedTrackingNumber = normalizeTrackingNumber(tracking_number);
       const normalizedRating = Number(rating);
-      if (!tracking_number || !Number.isFinite(normalizedRating) || normalizedRating < 1 || normalizedRating > 5) {
+      if (
+        !isValidTrackingNumber(normalizedTrackingNumber) ||
+        !Number.isFinite(normalizedRating) ||
+        normalizedRating < 1 ||
+        normalizedRating > 5
+      ) {
         sendJson(res, 400, { error: "Tracking number and rating from 1 to 5 are required" });
         return;
       }
 
       const createdRating = await database.createRating({
-        tracking_number,
+        tracking_number: normalizedTrackingNumber,
         rating: normalizedRating,
-        comment,
-        language
+        comment: sanitizeMultilineText(comment, 600),
+        language: sanitizeLanguage(language)
       });
 
       if (!createdRating) {
@@ -1014,15 +1222,16 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && pathname === "/api/shipment-files/lookup") {
       const { tracking_number, password } = await readRequestBody(req);
-      const trackingNumber = String(tracking_number || "").trim().toUpperCase();
+      const trackingNumber = normalizeTrackingNumber(tracking_number);
+      const documentsPassword = String(password || "").trim();
 
-      if (!trackingNumber || !password) {
+      if (!isValidTrackingNumber(trackingNumber) || !documentsPassword) {
         sendJson(res, 400, { error: "Tracking number and password are required" });
         return;
       }
 
       const access = await database.getShipmentFileAccess(trackingNumber);
-      if (!access || !safeCompare(access.password_hash, hashFilePassword(trackingNumber, password))) {
+      if (!access || !safeCompare(access.password_hash, hashFilePassword(trackingNumber, documentsPassword))) {
         sendJson(res, 401, { error: "Invalid documents password" });
         return;
       }
@@ -1039,7 +1248,11 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      const trackingNumber = pathname.split("/").pop().toUpperCase();
+      const trackingNumber = normalizeTrackingNumber(pathname.split("/").pop());
+      if (!isValidTrackingNumber(trackingNumber)) {
+        sendJson(res, 400, { error: "Invalid tracking number" });
+        return;
+      }
       const shipment = await database.getShipment(trackingNumber);
       if (!shipment) {
         sendJson(res, 404, { error: "Shipment not found" });
@@ -1059,11 +1272,14 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, 401, { error: "Unauthorized" });
         return;
       }
+      if (!requireCsrf(req, res, session)) {
+        return;
+      }
 
       const parts = pathname.split("/");
-      const trackingNumber = String(parts[4] || "").trim().toUpperCase();
+      const trackingNumber = normalizeTrackingNumber(parts[4]);
       const fileId = String(parts[5] || "").trim();
-      if (!trackingNumber || !fileId) {
+      if (!isValidTrackingNumber(trackingNumber) || !fileId) {
         sendJson(res, 400, { error: "Tracking number and file ID are required" });
         return;
       }
@@ -1087,9 +1303,14 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && pathname.startsWith("/api/shipment-files/")) {
       const parts = pathname.split("/");
-      const trackingNumber = String(parts[3] || "").trim().toUpperCase();
+      const trackingNumber = normalizeTrackingNumber(parts[3]);
       const fileId = String(parts[4] || "").trim();
       const password = requestUrl.searchParams.get("password") || "";
+
+      if (!isValidTrackingNumber(trackingNumber) || !fileId) {
+        sendJson(res, 400, { error: "Invalid shipment file request" });
+        return;
+      }
 
       const access = await database.getShipmentFileAccess(trackingNumber);
       if (!access || !safeCompare(access.password_hash, hashFilePassword(trackingNumber, password))) {
@@ -1120,13 +1341,16 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, 401, { error: "Unauthorized" });
         return;
       }
+      if (!requireCsrf(req, res, session)) {
+        return;
+      }
 
-      const trackingNumber = pathname.split("/").pop().toUpperCase();
+      const trackingNumber = normalizeTrackingNumber(pathname.split("/").pop());
       const payload = await readRequestBodyWithLimit(req, 35 * 1024 * 1024);
       const password = String(payload.password || "").trim();
       const files = Array.isArray(payload.files) ? payload.files : [];
 
-      if (!trackingNumber || !files.length) {
+      if (!isValidTrackingNumber(trackingNumber) || !files.length) {
         sendJson(res, 400, { error: "Tracking number and files are required" });
         return;
       }
@@ -1181,25 +1405,41 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && pathname === "/api/suggestions") {
       const { name, phone_number, tracking_number, message, language } = await readRequestBody(req);
-      if (!String(message || "").trim()) {
+      const suggestionMessage = sanitizeMultilineText(message, 1000);
+      const suggestionPhone = sanitizePhoneNumber(phone_number);
+      const suggestionTrackingNumber = normalizeTrackingNumber(tracking_number);
+
+      if (!suggestionMessage) {
         sendJson(res, 400, { error: "Suggestion message is required" });
+        return;
+      }
+      if (suggestionPhone && !isValidPhoneNumber(suggestionPhone)) {
+        sendJson(res, 400, { error: "Invalid phone number" });
+        return;
+      }
+      if (suggestionTrackingNumber && !isValidTrackingNumber(suggestionTrackingNumber)) {
+        sendJson(res, 400, { error: "Invalid tracking number" });
         return;
       }
 
       const suggestion = await database.createSuggestion({
-        name,
-        phone_number,
-        tracking_number,
-        message,
-        language
+        name: sanitizeText(name, 120),
+        phone_number: suggestionPhone,
+        tracking_number: suggestionTrackingNumber,
+        message: suggestionMessage,
+        language: sanitizeLanguage(language)
       });
       sendJson(res, 201, suggestion);
       return;
     }
 
     if (pathname.startsWith("/api/shipments/") && req.method === "GET") {
-      const trackingNumber = pathname.split("/").pop().toUpperCase();
-      const requestedLanguage = requestUrl.searchParams.get("lang") === "en" ? "en" : "ar";
+      const trackingNumber = normalizeTrackingNumber(pathname.split("/").pop());
+      const requestedLanguage = sanitizeLanguage(requestUrl.searchParams.get("lang"));
+      if (!isValidTrackingNumber(trackingNumber)) {
+        sendJson(res, 400, { error: "Invalid tracking number" });
+        return;
+      }
       const shipment = await database.getShipment(trackingNumber);
 
       if (!shipment) {
@@ -1227,6 +1467,9 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, 401, { error: "Unauthorized" });
         return;
       }
+      if (!requireCsrf(req, res, session)) {
+        return;
+      }
 
       const {
         tracking_number,
@@ -1238,25 +1481,39 @@ const server = http.createServer(async (req, res) => {
         progress
       } = await readRequestBody(req);
 
-      if (!tracking_number || !phone_number || !arabic_status || !english_status || !delivery_date) {
+      const normalizedTrackingNumber = normalizeTrackingNumber(tracking_number);
+      const normalizedPhoneNumber = sanitizePhoneNumber(phone_number);
+      const normalizedArabicStatus = sanitizeText(arabic_status, 160);
+      const normalizedEnglishStatus = sanitizeText(english_status, 160);
+      const normalizedDeliveryDate = String(delivery_date || "").trim();
+      const normalizedPreferredLanguage = sanitizeLanguage(preferred_language);
+      const normalizedProgress = normalizeProgressValue(progress);
+
+      if (
+        !isValidTrackingNumber(normalizedTrackingNumber) ||
+        !isValidPhoneNumber(normalizedPhoneNumber) ||
+        !normalizedArabicStatus ||
+        !normalizedEnglishStatus ||
+        !isValidIsoDate(normalizedDeliveryDate)
+      ) {
         sendJson(res, 400, { error: "Missing required fields" });
         return;
       }
 
-      const exists = await database.getShipment(tracking_number.trim().toUpperCase());
+      const exists = await database.getShipment(normalizedTrackingNumber);
       if (exists) {
         sendJson(res, 409, { error: "Tracking number already exists" });
         return;
       }
 
       const shipment = await database.createShipment({
-        tracking_number,
-        phone_number,
-        arabic_status,
-        english_status,
-        delivery_date,
-        preferred_language,
-        progress
+        tracking_number: normalizedTrackingNumber,
+        phone_number: normalizedPhoneNumber,
+        arabic_status: normalizedArabicStatus,
+        english_status: normalizedEnglishStatus,
+        delivery_date: normalizedDeliveryDate,
+        preferred_language: normalizedPreferredLanguage,
+        progress: normalizedProgress
       });
 
       sendJson(res, 201, withDerivedFields(shipment, req));
@@ -1269,8 +1526,11 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, 401, { error: "Unauthorized" });
         return;
       }
+      if (!requireCsrf(req, res, session)) {
+        return;
+      }
 
-      const trackingNumber = pathname.split("/").pop().toUpperCase();
+      const trackingNumber = normalizeTrackingNumber(pathname.split("/").pop());
       const {
         arabic_status,
         english_status,
@@ -1281,16 +1541,31 @@ const server = http.createServer(async (req, res) => {
         internal_notes,
         preferred_language
       } = await readRequestBody(req);
+      const normalizedDeliveryDate = delivery_date ? String(delivery_date).trim() : undefined;
+      const normalizedPhoneNumber = phone_number ? sanitizePhoneNumber(phone_number) : undefined;
+
+      if (!isValidTrackingNumber(trackingNumber)) {
+        sendJson(res, 400, { error: "Invalid tracking number" });
+        return;
+      }
+      if (normalizedDeliveryDate && !isValidIsoDate(normalizedDeliveryDate)) {
+        sendJson(res, 400, { error: "Invalid delivery date" });
+        return;
+      }
+      if (normalizedPhoneNumber && !isValidPhoneNumber(normalizedPhoneNumber)) {
+        sendJson(res, 400, { error: "Invalid phone number" });
+        return;
+      }
 
       const shipment = await database.updateShipment(trackingNumber, {
-        arabic_status,
-        english_status,
-        delivery_date,
-        phone_number,
-        progress,
-        location,
-        internal_notes,
-        preferred_language
+        arabic_status: sanitizeText(arabic_status, 160),
+        english_status: sanitizeText(english_status, 160),
+        delivery_date: normalizedDeliveryDate,
+        phone_number: normalizedPhoneNumber,
+        progress: normalizeProgressValue(progress),
+        location: sanitizeText(location, 160),
+        internal_notes: sanitizeMultilineText(internal_notes, 1000),
+        preferred_language: preferred_language ? sanitizeLanguage(preferred_language) : undefined
       });
 
       if (!shipment) {
@@ -1311,8 +1586,15 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, 401, { error: "Unauthorized" });
         return;
       }
+      if (!requireCsrf(req, res, session)) {
+        return;
+      }
 
-      const trackingNumber = pathname.split("/").pop().toUpperCase();
+      const trackingNumber = normalizeTrackingNumber(pathname.split("/").pop());
+      if (!isValidTrackingNumber(trackingNumber)) {
+        sendJson(res, 400, { error: "Invalid tracking number" });
+        return;
+      }
       const deleted = await database.deleteShipment(trackingNumber);
       if (!deleted) {
         sendJson(res, 404, { error: "Shipment not found" });

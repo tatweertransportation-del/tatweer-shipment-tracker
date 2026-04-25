@@ -467,8 +467,7 @@ const page = document.body.dataset.page;
 const storageKeys = {
   language: "shipment-language",
   theme: "shipment-theme",
-  history: "shipment-search-history",
-  token: "shipment-admin-token"
+  history: "shipment-search-history"
 };
 const APP_CONFIG = window.APP_CONFIG || {};
 const MAX_SHIPMENT_FILE_SIZE_MB = 18;
@@ -476,6 +475,7 @@ const MAX_SHIPMENT_FILE_SIZE_BYTES = MAX_SHIPMENT_FILE_SIZE_MB * 1024 * 1024;
 
 let currentLanguage = localStorage.getItem(storageKeys.language) || "en";
 let currentTheme = localStorage.getItem(storageKeys.theme) || "dark";
+let adminCsrfToken = "";
 let lastViewedShipment = null;
 let adminState = {
   shipments: [],
@@ -489,6 +489,15 @@ function normalizeBaseUrl(value) {
 
 function resolveApiBaseUrl() {
   return normalizeBaseUrl(APP_CONFIG.API_BASE_URL) || window.location.origin;
+}
+
+function getCookieValue(name) {
+  const prefix = `${name}=`;
+  return document.cookie
+    .split(";")
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(prefix))
+    ?.slice(prefix.length) || "";
 }
 
 function buildApiUrl(path) {
@@ -831,17 +840,22 @@ async function api(path, options = {}) {
     "Content-Type": "application/json",
     ...(options.headers || {})
   };
-  const token = localStorage.getItem(storageKeys.token);
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  const method = String(options.method || "GET").toUpperCase();
+  const csrfToken = adminCsrfToken || getCookieValue("tatweer_admin_csrf");
+  if (!["GET", "HEAD", "OPTIONS"].includes(method) && csrfToken) {
+    headers["X-CSRF-Token"] = csrfToken;
   }
 
   const response = await fetch(buildApiUrl(path), {
     ...options,
-    headers
+    headers,
+    credentials: "include"
   });
 
   const data = await response.json().catch(() => ({}));
+  if (data.csrf_token) {
+    adminCsrfToken = data.csrf_token;
+  }
   if (!response.ok) {
     throw new Error(data.error || "Request failed");
   }
@@ -1284,17 +1298,10 @@ async function submitSuggestion(form) {
 }
 
 async function downloadExcelReport() {
-  const token = localStorage.getItem(storageKeys.token);
-  if (!token) {
-    throw new Error("Unauthorized");
-  }
-
   const response = await fetch(
     buildApiUrl(`/api/shipments/export.xls?lang=${encodeURIComponent(currentLanguage)}`),
     {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+      credentials: "include"
     }
   );
 
@@ -1322,10 +1329,8 @@ async function downloadExcelReport() {
 }
 
 async function downloadBackup() {
-  const token = localStorage.getItem(storageKeys.token);
-  if (!token) throw new Error("Unauthorized");
   const response = await fetch(buildApiUrl("/api/backup"), {
-    headers: { Authorization: `Bearer ${token}` }
+    credentials: "include"
   });
   if (!response.ok) throw new Error("Unable to export backup.");
   const blob = await response.blob();
@@ -1535,16 +1540,12 @@ function setupTrackingPage() {
 }
 
 async function ensureAdminSession() {
-  const token = localStorage.getItem(storageKeys.token);
-  if (!token) {
-    return false;
-  }
-
   try {
-    await api("/api/session");
+    const session = await api("/api/session");
+    adminCsrfToken = session.csrf_token || getCookieValue("tatweer_admin_csrf");
     return true;
   } catch (error) {
-    localStorage.removeItem(storageKeys.token);
+    adminCsrfToken = "";
     return false;
   }
 }
@@ -1881,6 +1882,8 @@ async function saveShipmentFilesFromAdmin() {
 }
 
 function setupAdminPage() {
+  localStorage.removeItem("shipment-admin-token");
+
   document.getElementById("loginForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
@@ -1891,7 +1894,7 @@ function setupAdminPage() {
           password: document.getElementById("passwordInput").value
         })
       });
-      localStorage.setItem(storageKeys.token, data.token);
+      adminCsrfToken = data.csrf_token || getCookieValue("tatweer_admin_csrf");
       setAdminView(true);
       await loadAdminData();
       notify(t("loginSuccess"));
@@ -1900,8 +1903,16 @@ function setupAdminPage() {
     }
   });
 
-  document.getElementById("logoutBtn")?.addEventListener("click", () => {
-    localStorage.removeItem(storageKeys.token);
+  document.getElementById("logoutBtn")?.addEventListener("click", async () => {
+    try {
+      await api("/api/logout", {
+        method: "POST",
+        body: JSON.stringify({})
+      });
+    } catch (error) {
+      // Ignore logout transport errors and still clear the local admin view.
+    }
+    adminCsrfToken = "";
     setAdminView(false);
   });
 
