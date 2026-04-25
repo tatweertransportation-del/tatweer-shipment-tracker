@@ -677,6 +677,14 @@ body.light-mode .status-badge {
   font-size: 0.92rem;
 }
 
+.footer-legal {
+  margin: 8px 0 0;
+  max-width: 760px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
+
 .progress-track {
   height: 12px;
   border-radius: 999px;

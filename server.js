@@ -25,6 +25,14 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
   .split(",")
   .map((item) => item.trim())
   .filter(Boolean);
+const RATE_LIMIT_WINDOWS = {
+  login: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 7,
+    blockMs: 15 * 60 * 1000
+  }
+};
+const rateLimitStore = new Map();
 
 const database = createDatabase({
   dbPath: DATABASE_FILE,
@@ -126,7 +134,7 @@ function verifySessionToken(token) {
     .update(encodedPayload)
     .digest("base64url");
 
-  if (signature !== expectedSignature) {
+  if (!safeCompare(signature, expectedSignature)) {
     return null;
   }
 
@@ -265,6 +273,115 @@ function sendBinary(res, statusCode, body, contentType, fileName, forceDownload 
     "Cache-Control": "private, no-store"
   });
   res.end(body);
+}
+
+function setSecurityHeaders(req, res) {
+  const csp = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "img-src 'self' data: blob:",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "script-src 'self' 'unsafe-inline'",
+    "connect-src 'self'",
+    "frame-src 'none'",
+    "media-src 'self'",
+    "worker-src 'self' blob:",
+    "upgrade-insecure-requests"
+  ].join("; ");
+
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+  res.setHeader("Content-Security-Policy", csp);
+  if ((req.headers["x-forwarded-proto"] || "").toLowerCase() === "https" || req.socket.encrypted) {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+}
+
+function getClientIp(req) {
+  const forwarded = String(req.headers["x-forwarded-for"] || "")
+    .split(",")
+    .map((part) => part.trim())
+    .find(Boolean);
+  return forwarded || req.socket.remoteAddress || "unknown";
+}
+
+function cleanupRateLimitStore(now = Date.now()) {
+  for (const [key, entry] of rateLimitStore.entries()) {
+    if (entry.blockedUntil && entry.blockedUntil > now) {
+      continue;
+    }
+    if (!entry.requests?.length) {
+      rateLimitStore.delete(key);
+      continue;
+    }
+    if (now - entry.requests[entry.requests.length - 1] > 60 * 60 * 1000) {
+      rateLimitStore.delete(key);
+    }
+  }
+}
+
+function applyRateLimit(req, res, bucketName, subject = "") {
+  const config = RATE_LIMIT_WINDOWS[bucketName];
+  if (!config) {
+    return false;
+  }
+
+  const now = Date.now();
+  cleanupRateLimitStore(now);
+
+  const key = `${bucketName}:${getClientIp(req)}:${String(subject || "").trim().toUpperCase()}`;
+  const entry = rateLimitStore.get(key) || { requests: [], blockedUntil: 0 };
+
+  if (entry.blockedUntil && entry.blockedUntil > now) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((entry.blockedUntil - now) / 1000));
+    res.setHeader("Retry-After", String(retryAfterSeconds));
+    sendJson(res, 429, {
+      error: "Too many requests. Please wait a little and try again."
+    });
+    return true;
+  }
+
+  entry.requests = entry.requests.filter((timestamp) => now - timestamp < config.windowMs);
+  entry.requests.push(now);
+
+  if (entry.requests.length > config.maxRequests) {
+    entry.blockedUntil = now + config.blockMs;
+    rateLimitStore.set(key, entry);
+    const retryAfterSeconds = Math.max(1, Math.ceil(config.blockMs / 1000));
+    res.setHeader("Retry-After", String(retryAfterSeconds));
+    sendJson(res, 429, {
+      error: "Too many requests. Please wait a little and try again."
+    });
+    return true;
+  }
+
+  rateLimitStore.set(key, entry);
+  return false;
+}
+
+function validateDocumentsPassword(password) {
+  const value = String(password || "").trim();
+  if (!value) {
+    return null;
+  }
+
+  if (value.length < 6) {
+    return "Documents password must be at least 6 characters.";
+  }
+
+  if (/^\d+$/.test(value) && value.length < 8) {
+    return "Numeric-only documents passwords must be at least 8 digits.";
+  }
+
+  return null;
 }
 
 function sanitizeUploadedFile(file) {
@@ -730,6 +847,7 @@ function buildShipmentsWorkbookXml(shipments, language) {
 }
 
 const server = http.createServer(async (req, res) => {
+  setSecurityHeaders(req, res);
   setCorsHeaders(req, res);
   const requestUrl = new URL(req.url, getPublicBaseUrl(req));
   const pathname = decodeURIComponent(requestUrl.pathname);
@@ -747,6 +865,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "POST" && pathname === "/api/login") {
+      if (applyRateLimit(req, res, "login")) {
+        return;
+      }
+
       const { username, password } = await readRequestBody(req);
       if (verifyAdminCredentials(username, password)) {
         sendJson(res, 200, {
@@ -893,6 +1015,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && pathname === "/api/shipment-files/lookup") {
       const { tracking_number, password } = await readRequestBody(req);
       const trackingNumber = String(tracking_number || "").trim().toUpperCase();
+
       if (!trackingNumber || !password) {
         sendJson(res, 400, { error: "Tracking number and password are required" });
         return;
@@ -1011,6 +1134,12 @@ const server = http.createServer(async (req, res) => {
       const currentAccess = await database.getShipmentFileAccess(trackingNumber);
       if (!password && !currentAccess) {
         sendJson(res, 400, { error: "Documents password is required for the first upload" });
+        return;
+      }
+
+      const passwordValidationError = validateDocumentsPassword(password);
+      if (passwordValidationError) {
+        sendJson(res, 400, { error: passwordValidationError });
         return;
       }
 
