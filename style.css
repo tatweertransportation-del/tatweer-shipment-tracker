@@ -537,6 +537,30 @@ textarea {
   text-align: end;
 }
 
+body.light-mode .dashboard-activity-card {
+  background:
+    linear-gradient(180deg, rgba(255, 249, 245, 0.98), rgba(248, 239, 233, 0.94));
+  border: 1px solid rgba(159, 98, 74, 0.1);
+  box-shadow: 0 22px 46px rgba(95, 58, 45, 0.08);
+}
+
+body.light-mode .dashboard-activity-card h2,
+body.light-mode .dashboard-activity-card strong,
+body.light-mode .dashboard-activity-card .activity-meta span {
+  color: #2f2120;
+}
+
+body.light-mode .dashboard-activity-card .card-label,
+body.light-mode .dashboard-activity-card .activity-item p,
+body.light-mode .dashboard-activity-card .activity-meta small {
+  color: #8a675c;
+}
+
+body.light-mode .activity-item {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(159, 98, 74, 0.1);
+}
+
 .dashboard-logout-btn {
   width: 100%;
 }
