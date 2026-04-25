@@ -158,6 +158,10 @@ const TRANSLATIONS = {
     username: "Username",
     password: "Password",
     loginButton: "Login",
+    dashboardOverviewEyebrow: "Operations Dashboard",
+    dashboardOverviewTitle: "Professional control for every shipment movement",
+    dashboardOverviewText:
+      "Monitor live logistics performance, jump quickly to the action you need, and keep the operations flow organized from shipment creation to customer delivery.",
     totalShipments: "Total Shipments",
     deliveredCount: "Delivered",
     inTransitCount: "In Transit",
@@ -382,6 +386,10 @@ const TRANSLATIONS = {
     username: "اسم المستخدم",
     password: "كلمة المرور",
     loginButton: "دخول",
+    dashboardOverviewEyebrow: "لوحة تشغيل الشحنات",
+    dashboardOverviewTitle: "تحكم احترافي في كل حركة داخل دورة الشحنة",
+    dashboardOverviewText:
+      "تابع أداء التشغيل بشكل مباشر، وانتقل بسرعة إلى المهمة التي تريدها، وحافظ على تنظيم سير الشحنات من الإنشاء وحتى التسليم للعميل.",
     totalShipments: "عدد الشحنات",
     deliveredCount: "تم التسليم",
     inTransitCount: "قيد الشحن",

@@ -53,56 +53,72 @@
         </section>
 
         <section class="dashboard-shell hidden" id="dashboardSection">
-          <div class="analytics-grid">
-            <article class="glass-card analytics-card">
-              <span class="metric-label" data-i18n="totalShipments">Total Shipments</span>
-              <strong id="analyticsTotal">0</strong>
-            </article>
-            <article class="glass-card analytics-card">
-              <span class="metric-label" data-i18n="deliveredCount">Delivered</span>
-              <strong id="analyticsDelivered">0</strong>
-            </article>
-            <article class="glass-card analytics-card">
-              <span class="metric-label" data-i18n="inTransitCount">In Transit</span>
-              <strong id="analyticsTransit">0</strong>
-            </article>
-            <article class="glass-card analytics-card">
-              <span class="metric-label" data-i18n="suggestionsCount">Suggestions</span>
-              <strong id="analyticsSuggestions">0</strong>
-            </article>
-            <article class="glass-card analytics-card analytics-highlight">
-              <span class="metric-label" data-i18n="withFilesCount">With Files</span>
-              <strong id="analyticsWithFiles">0</strong>
-            </article>
-            <article class="glass-card analytics-card">
-              <span class="metric-label" data-i18n="withoutFilesCount">Without Files</span>
-              <strong id="analyticsWithoutFiles">0</strong>
-            </article>
-            <article class="glass-card analytics-card">
-              <span class="metric-label" data-i18n="avgRatingMetric">Average Rating</span>
-              <strong id="analyticsAvgRating">0.0</strong>
-            </article>
-            <article class="glass-card analytics-card analytics-highlight">
-              <span class="metric-label" data-i18n="latestUpdateMetric">Latest Update</span>
-              <strong id="analyticsLatestUpdate">--</strong>
-            </article>
-            <article class="glass-card analytics-card logout-card">
-              <button class="danger-btn" id="logoutBtn" type="button" data-i18n="logout">Logout</button>
-            </article>
-          </div>
-
-          <section class="glass-card dashboard-activity-card">
-            <div class="section-title-row">
-              <div>
-                <p class="card-label" data-i18n="latestActivity">Latest Activity</p>
-                <h2 data-i18n="latestActivitySubtitle">Most recently updated shipments</h2>
+          <section class="dashboard-overview">
+            <article class="glass-card dashboard-hero-card">
+              <div class="dashboard-hero-copy">
+                <p class="card-label" data-i18n="dashboardOverviewEyebrow">Operations Dashboard</p>
+                <h2 data-i18n="dashboardOverviewTitle">Professional control for every shipment movement</h2>
+                <p data-i18n="dashboardOverviewText">
+                  Monitor live logistics performance, jump quickly to the action you need, and keep the operations flow organized from shipment creation to customer delivery.
+                </p>
               </div>
+              <div class="dashboard-hero-actions">
+                <a class="ghost-outline-btn" href="#createShipmentSection" data-i18n="createShipment">Add New Shipment</a>
+                <a class="ghost-outline-btn" href="#updateShipmentSection" data-i18n="updateShipment">Update Shipment Status</a>
+                <a class="ghost-outline-btn" href="#documentsManagementSection" data-i18n="adminDocumentsTitle">Shipment Documents</a>
+                <a class="ghost-outline-btn" href="#shipmentsTableSection" data-i18n="liveShipmentList">Live Shipment List</a>
+                <button class="danger-btn dashboard-logout-btn" id="logoutBtn" type="button" data-i18n="logout">Logout</button>
+              </div>
+            </article>
+
+            <div class="dashboard-summary-grid">
+              <article class="glass-card summary-card summary-card-primary">
+                <span class="metric-label" data-i18n="totalShipments">Total Shipments</span>
+                <strong id="analyticsTotal">0</strong>
+              </article>
+              <article class="glass-card summary-card">
+                <span class="metric-label" data-i18n="deliveredCount">Delivered</span>
+                <strong id="analyticsDelivered">0</strong>
+              </article>
+              <article class="glass-card summary-card">
+                <span class="metric-label" data-i18n="inTransitCount">In Transit</span>
+                <strong id="analyticsTransit">0</strong>
+              </article>
+              <article class="glass-card summary-card">
+                <span class="metric-label" data-i18n="suggestionsCount">Suggestions</span>
+                <strong id="analyticsSuggestions">0</strong>
+              </article>
+              <article class="glass-card summary-card">
+                <span class="metric-label" data-i18n="withFilesCount">With Files</span>
+                <strong id="analyticsWithFiles">0</strong>
+              </article>
+              <article class="glass-card summary-card">
+                <span class="metric-label" data-i18n="withoutFilesCount">Without Files</span>
+                <strong id="analyticsWithoutFiles">0</strong>
+              </article>
+              <article class="glass-card summary-card">
+                <span class="metric-label" data-i18n="avgRatingMetric">Average Rating</span>
+                <strong id="analyticsAvgRating">0.0</strong>
+              </article>
+              <article class="glass-card summary-card">
+                <span class="metric-label" data-i18n="latestUpdateMetric">Latest Update</span>
+                <strong id="analyticsLatestUpdate">--</strong>
+              </article>
             </div>
-            <div class="activity-list" id="analyticsRecentList"></div>
+
+            <section class="glass-card dashboard-activity-card">
+              <div class="section-title-row">
+                <div>
+                  <p class="card-label" data-i18n="latestActivity">Latest Activity</p>
+                  <h2 data-i18n="latestActivitySubtitle">Most recently updated shipments</h2>
+                </div>
+              </div>
+              <div class="activity-list" id="analyticsRecentList"></div>
+            </section>
           </section>
 
           <div class="admin-grid">
-            <article class="glass-card admin-form-card">
+            <article class="glass-card admin-form-card" id="createShipmentSection">
               <div class="section-title-row">
                 <div>
                   <p class="card-label" data-i18n="shipmentManagement">Shipment Management</p>
@@ -150,7 +166,7 @@
               </form>
             </article>
 
-            <article class="glass-card update-card">
+            <article class="glass-card update-card" id="updateShipmentSection">
               <div class="section-title-row">
                 <div>
                   <p class="card-label" data-i18n="statusUpdates">Status Updates</p>
@@ -200,7 +216,7 @@
             </article>
           </div>
 
-          <section class="glass-card shipments-table-card">
+          <section class="glass-card shipments-table-card" id="documentsManagementSection">
             <div class="section-title-row">
               <div>
                 <p class="card-label" data-i18n="adminDocumentsTitle">Shipment Documents</p>
@@ -235,7 +251,7 @@
             <div class="admin-files-preview" id="adminShipmentFilesPreview"></div>
           </section>
 
-          <section class="glass-card shipments-table-card">
+          <section class="glass-card shipments-table-card" id="shipmentsTableSection">
             <div class="section-title-row">
               <div>
                 <p class="card-label" data-i18n="allShipments">All Shipments</p>
