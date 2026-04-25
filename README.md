@@ -1,162 +1,79 @@
 # Tatweer Tracking System
 
-Professional bilingual shipment tracking system for logistics companies, with a public customer tracking page and a protected admin dashboard.
+Tatweer Tracking System is a professional bilingual shipment tracking platform designed for logistics operations. It provides a customer-facing tracking experience and a protected admin dashboard for managing shipments, documents, updates, ratings, and customer feedback.
 
-## Features
+## Overview
 
-- Public tracking page for customers
-- Protected admin dashboard with login
-- Arabic and English support with RTL and LTR switching
-- Dark mode and responsive UI
-- Shipment timeline, progress bar, and delivery estimate
+The system is built to support real shipment workflows with a clean public interface and an operations-focused admin area. It is designed for Arabic and English usage, supports RTL and LTR layouts, and follows a modern logistics-style visual identity.
+
+## Core Experience
+
+- Public shipment tracking page for customers
+- Protected admin dashboard for shipment management
+- Arabic and English support with dynamic RTL/LTR switching
+- Dark mode and light mode support
+- Responsive design for desktop and mobile
+- Shipment timeline, status progress, and estimated delivery view
 - Search history for customer lookups
-- Shipment analytics in admin dashboard
-- WhatsApp notification support through Twilio, WATI, or mock mode
-- Render-ready backend deployment
+- Shipment document access with per-shipment password protection
+- Customer ratings and suggestions connected to the admin panel
+- WhatsApp-ready customer communication workflow
+- Analytics and activity monitoring inside the admin dashboard
+
+## Main Sections
+
+### Customer Tracking Interface
+
+The public page allows customers to:
+
+- Search by tracking number
+- View shipment status and progress
+- Follow shipment milestones and last update details
+- Access shipment documents securely
+- Submit ratings and feedback
+- Contact support through linked channels
+
+### Admin Dashboard
+
+The admin experience allows operations teams to:
+
+- Log in to a protected control panel
+- Create and update shipments
+- Manage shipment files and customer access passwords
+- Review customer suggestions and ratings
+- Monitor shipment analytics and recent activity
+- Export shipment data and maintain backups
+
+## Design Direction
+
+The interface is styled to feel close to a real logistics company system, with:
+
+- Clean corporate presentation
+- Tatweer-branded visual styling
+- Strong Arabic and English readability
+- Simple customer footer and contact access
+- Dashboard layouts focused on speed and clarity for operations work
+
+## Security Direction
+
+The project includes a hardened admin authentication flow and server-side protections intended to improve operational safety, including protected admin sessions, request validation, security headers, and cross-site request protections for admin actions.
 
 ## Project Structure
 
 - `index.html` public tracking page
 - `admin.html` protected admin dashboard
-- `style.css` full UI styling
-- `script.js` frontend logic
-- `config.js` frontend API base URL config
-- `server.js` Node.js backend server
-- `data/shipments.json` local shipment storage
-- `render.yaml` Render deployment configuration
-- `.env.example` environment variable template
+- `style.css` full visual styling
+- `script.js` frontend logic and bilingual behavior
+- `config.js` frontend configuration
+- `server.js` backend server and API logic
+- `db.js`, `sqlite-db.js`, `supabase-db.js` data layer files
+- `render.yaml` deployment blueprint
+- `RIGHTS.md` ownership and rights notice
 
-## Local Run
+## Rights
 
-1. Copy `.env.example` to `.env`
-2. Set your admin credentials and provider values
-3. Start the app:
+This project is proprietary to Tatweer Logistics Services.
 
-```bash
-node server.js
-```
-
-4. Open:
-
-- `http://localhost:3000/index.html`
-- `http://localhost:3000/admin.html`
-
-## Important Data Storage Note
-
-This project now supports two storage drivers:
-
-- `sqlite` for local development
-- `supabase` for a free cloud database that survives Render redeploys
-
-If you stay on Render Free, use `supabase`. Render Free does not preserve local files across restarts or redeploys.
-
-For local development:
-
-```env
-STORAGE_DRIVER=sqlite
-DATA_FILE_PATH=./data/shipments.json
-SUGGESTIONS_FILE_PATH=./data/suggestions.json
-DATABASE_FILE_PATH=./data/tatweer-tracking.sqlite
-AUDIT_LOG_FILE_PATH=./data/audit-log.jsonl
-```
-
-For Render Free with Supabase:
-
-```env
-STORAGE_DRIVER=supabase
-SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-AUDIT_LOG_FILE_PATH=./data/audit-log.jsonl
-```
-
-The app can migrate your existing local JSON data into Supabase automatically on first successful connection if the Supabase tables are empty.
-
-## Default Admin Login
-
-- Username: `admin`
-- Password: `admin123`
-
-Change these before production use.
-
-## Render Deployment
-
-This repo includes `render.yaml` for quick deployment.
-
-For a fully free setup, use Supabase:
-
-1. Create a free Supabase project
-2. Open the SQL Editor and run [supabase-schema.sql](./supabase-schema.sql)
-3. In Supabase, copy:
-   - Project URL
-   - service_role key
-4. In Render, set:
-
-```env
-STORAGE_DRIVER=supabase
-SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-AUDIT_LOG_FILE_PATH=./data/audit-log.jsonl
-```
-
-This keeps the app on Render Free while storing the actual shipment data in Supabase.
-
-### Same Render service for frontend and backend
-
-No `API_BASE_URL` change is usually needed because the frontend falls back to the current domain automatically.
-
-### Separate frontend and backend services
-
-Update `config.js` if your frontend and backend are on different services:
-
-```js
-window.APP_CONFIG = {
-  API_BASE_URL: "https://your-backend-service.onrender.com",
-  APP_BASE_URL: ""
-};
-```
-
-Set these Render backend environment variables:
-
-```env
-STORAGE_DRIVER=supabase
-SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-AUDIT_LOG_FILE_PATH=/var/data/audit-log.jsonl
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=admin123
-ADMIN_SESSION_SECRET=replace-with-a-strong-secret
-TRACKING_BASE_URL=https://your-frontend-service.onrender.com
-ALLOWED_ORIGINS=https://your-frontend-service.onrender.com
-WHATSAPP_PROVIDER=mock
-```
-
-## WhatsApp Providers
-
-### Mock mode
-
-```env
-WHATSAPP_PROVIDER=mock
-```
-
-### Twilio
-
-```env
-WHATSAPP_PROVIDER=twilio
-TWILIO_ACCOUNT_SID=your_sid
-TWILIO_AUTH_TOKEN=your_token
-TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
-```
-
-### WATI
-
-```env
-WHATSAPP_PROVIDER=wati
-WATI_INSTANCE_ID=your_instance_id
-WATI_ACCESS_TOKEN=your_access_token
-```
-
-## Security Notes
-
-- Keep `.env` out of GitHub
-- Never expose provider API keys in frontend files
-- Admin authentication is stored in `localStorage` using a signed token
+- Brand name, logo, and visual identity assets are reserved
+- Source code and related project materials may not be reused without permission
+- Additional rights details are available in [RIGHTS.md](./RIGHTS.md)
