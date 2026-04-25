@@ -113,8 +113,10 @@ const TRANSLATIONS = {
     facebookButtonHint: "Open Facebook page",
     contactUsButton: "Contact Us",
     contactUsButtonHint: "Open WhatsApp support",
+    addressButtonShort: "Our Location",
     addressButton: "10th of Ramadan, Al Ordonia, Shams Mall, 4th Floor",
     addressButtonHint: "Open location on map",
+    footerCopyright: "Copyright © Tatweer Logistics Services",
     suggestionsTitle: "Suggestions and Feedback",
     suggestionsHeadline: "Help us make tracking better for you",
     suggestionsText:
@@ -336,8 +338,10 @@ const TRANSLATIONS = {
     facebookButtonHint: "افتح صفحة فيسبوك",
     contactUsButton: "تواصل معنا",
     contactUsButtonHint: "افتح واتساب الدعم",
+    addressButtonShort: "العنوان",
     addressButton: "العاشر من رمضان ,الاردنيه , مول شمس , الدور الرابع",
     addressButtonHint: "افتح الموقع على الخريطة",
+    footerCopyright: "جميع الحقوق محفوظة © تطوير للخدمات اللوجستية",
     suggestionsTitle: "الاقتراحات والملاحظات",
     suggestionsHeadline: "ساعدنا نخلي تجربة التتبع أفضل",
     suggestionsText:

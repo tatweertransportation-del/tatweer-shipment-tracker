@@ -435,13 +435,6 @@ textarea {
   background: var(--surface-soft);
 }
 
-.analytics-highlight {
-  background:
-    linear-gradient(135deg, rgba(217, 154, 122, 0.24), rgba(159, 98, 74, 0.08)),
-    var(--surface-soft);
-  border: 1px solid rgba(217, 154, 122, 0.24);
-}
-
 .metric-box strong,
 .analytics-card strong {
   display: block;
@@ -450,13 +443,14 @@ textarea {
 }
 
 .dashboard-activity-card {
-  padding: 24px;
+  padding: 20px 22px;
+  background: rgba(24, 18, 18, 0.62);
 }
 
 .activity-list {
   display: grid;
-  gap: 12px;
-  margin-top: 18px;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 .activity-item {
@@ -464,9 +458,10 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 16px;
-  border-radius: 18px;
-  background: var(--surface-soft);
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .activity-item p,
@@ -477,6 +472,28 @@ textarea {
 
 .activity-meta {
   text-align: end;
+}
+
+.analytics-grid {
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  align-items: stretch;
+}
+
+.analytics-card {
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.analytics-card strong {
+  font-size: 1.3rem;
+}
+
+.logout-card {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
 }
 
 .metric-subtext {
@@ -548,8 +565,7 @@ body.light-mode .status-badge {
   margin-bottom: 10px;
 }
 
-.brand-story-card,
-.contact-footer-card {
+.brand-story-card {
   padding: 28px;
 }
 
@@ -559,61 +575,61 @@ body.light-mode .status-badge {
   line-height: 1.8;
 }
 
-.why-grid,
-.contact-links-grid {
+.why-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
   margin-top: 22px;
 }
 
-.why-card,
-.contact-link-card {
+.why-card {
   padding: 18px;
   border-radius: 20px;
   border: 1px solid var(--line);
   background: var(--surface-soft);
 }
 
-.why-card strong,
-.contact-link-card strong {
+.why-card strong {
   display: block;
   margin-bottom: 8px;
 }
 
-.why-card p,
-.contact-link-card p {
+.why-card p {
   margin: 0;
   color: var(--muted);
   line-height: 1.7;
 }
 
-.contact-link-card {
+.site-footer {
+  margin-top: 8px;
+  padding: 18px 6px 8px;
+  border-top: 1px solid var(--line);
+}
+
+.footer-links {
   display: flex;
-  align-items: flex-start;
-  gap: 14px;
+  flex-wrap: wrap;
+  gap: 14px 22px;
+}
+
+.footer-links a {
   color: var(--text);
   text-decoration: none;
-  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  font-weight: 700;
 }
 
-.contact-link-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(217, 154, 122, 0.32);
-  background: rgba(217, 154, 122, 0.12);
+.footer-links a:hover {
+  color: var(--gold);
 }
 
-.contact-link-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, var(--accent), var(--gold));
-  color: #fff;
-  font-weight: 900;
-  flex: 0 0 auto;
+.footer-address,
+.footer-copy {
+  margin: 12px 0 0;
+  color: var(--muted);
+}
+
+.footer-copy {
+  font-size: 0.92rem;
 }
 
 .progress-track {
