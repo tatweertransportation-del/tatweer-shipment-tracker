@@ -93,6 +93,28 @@ const TRANSLATIONS = {
     supportTitle: "Need help with your cargo?",
     supportText:
       "Our logistics team monitors every route, crossing, and handover point so you always know what happens next.",
+    whyTatweerEyebrow: "Why Tatweer",
+    whyTatweerTitle: "A professional logistics experience from tracking to delivery",
+    whyTatweerText:
+      "Tatweer combines live shipment visibility, secure document access, responsive customer support, and disciplined logistics execution to give every shipment a professional flow.",
+    whyTatweerLive: "Live visibility",
+    whyTatweerLiveText: "Follow status changes, updates, and delivery progress in one place.",
+    whyTatweerSecure: "Secure documents",
+    whyTatweerSecureText: "Shipment papers stay protected with dedicated access for every shipment.",
+    whyTatweerSupport: "Fast support",
+    whyTatweerSupportText: "Reach our operations team quickly when you need help with your cargo.",
+    whyTatweerFleet: "Trusted execution",
+    whyTatweerFleetText: "A qualified team and organized logistics process from start to finish.",
+    contactInfoEyebrow: "Connect With Tatweer",
+    contactInfoTitle: "Stay close to our team on every route",
+    contactInfoText:
+      "Use the buttons below to open our official Facebook page, contact support on WhatsApp, or view our office location.",
+    facebookButton: "tatweer for logistics",
+    facebookButtonHint: "Open Facebook page",
+    contactUsButton: "Contact Us",
+    contactUsButtonHint: "Open WhatsApp support",
+    addressButton: "10th of Ramadan, Al Ordonia, Shams Mall, 4th Floor",
+    addressButtonHint: "Open location on map",
     suggestionsTitle: "Suggestions and Feedback",
     suggestionsHeadline: "Help us make tracking better for you",
     suggestionsText:
@@ -185,6 +207,13 @@ const TRANSLATIONS = {
     suggestionsInbox: "Customer Suggestions",
     suggestionsInboxSubtitle: "Messages submitted from the public tracking page",
     suggestionsCount: "Suggestions",
+    withFilesCount: "With Files",
+    withoutFilesCount: "Without Files",
+    avgRatingMetric: "Average Rating",
+    latestUpdateMetric: "Latest Update",
+    latestActivity: "Latest Activity",
+    latestActivitySubtitle: "Most recently updated shipments",
+    noRecentActivity: "No recent shipment activity yet.",
     noSuggestions: "No suggestions have been submitted yet.",
     suggestionDate: "Date",
     suggestionSender: "Sender",
@@ -287,6 +316,28 @@ const TRANSLATIONS = {
     supportTitle: "هل تحتاج مساعدة في شحنتك؟",
     supportText:
       "فريقنا اللوجستي يراقب كل مسار ونقطة عبور وتسليم حتى تكون على اطلاع دائم بما يحدث.",
+    whyTatweerEyebrow: "لماذا تطوير",
+    whyTatweerTitle: "تجربة لوجستية احترافية من التتبع حتى التسليم",
+    whyTatweerText:
+      "تجمع تطوير بين متابعة مباشرة للشحنة، ووصول آمن إلى المستندات، ودعم سريع، وتنفيذ لوجستي منظم لتقديم تجربة احترافية في كل شحنة.",
+    whyTatweerLive: "متابعة مباشرة",
+    whyTatweerLiveText: "تابع تغيرات الحالة والتحديثات ونسبة التقدم من مكان واحد.",
+    whyTatweerSecure: "مستندات آمنة",
+    whyTatweerSecureText: "أوراق الشحنة محمية بصلاحية مخصصة لكل شحنة.",
+    whyTatweerSupport: "دعم سريع",
+    whyTatweerSupportText: "تواصل بسرعة مع فريق التشغيل عند الحاجة لأي مساعدة.",
+    whyTatweerFleet: "تنفيذ موثوق",
+    whyTatweerFleetText: "فريق مؤهل وعملية لوجستية منظمة من البداية للنهاية.",
+    contactInfoEyebrow: "تواصل مع تطوير",
+    contactInfoTitle: "ابق قريبًا من فريقنا في كل مرحلة",
+    contactInfoText:
+      "استخدم الأزرار التالية لفتح صفحتنا الرسمية على فيسبوك أو التواصل مع الدعم عبر واتساب أو الوصول إلى عنوان المكتب.",
+    facebookButton: "tatweer for logistics",
+    facebookButtonHint: "افتح صفحة فيسبوك",
+    contactUsButton: "تواصل معنا",
+    contactUsButtonHint: "افتح واتساب الدعم",
+    addressButton: "العاشر من رمضان ,الاردنيه , مول شمس , الدور الرابع",
+    addressButtonHint: "افتح الموقع على الخريطة",
     suggestionsTitle: "الاقتراحات والملاحظات",
     suggestionsHeadline: "ساعدنا نخلي تجربة التتبع أفضل",
     suggestionsText:
@@ -378,6 +429,13 @@ const TRANSLATIONS = {
     suggestionsInbox: "اقتراحات العملاء",
     suggestionsInboxSubtitle: "الرسائل المرسلة من صفحة التتبع العامة",
     suggestionsCount: "عدد الاقتراحات",
+    withFilesCount: "شحنات بها ملفات",
+    withoutFilesCount: "شحنات بدون ملفات",
+    avgRatingMetric: "متوسط التقييم",
+    latestUpdateMetric: "أحدث تحديث",
+    latestActivity: "آخر النشاطات",
+    latestActivitySubtitle: "أحدث الشحنات التي تم تحديثها",
+    noRecentActivity: "لا توجد نشاطات حديثة للشحنات حتى الآن.",
     noSuggestions: "لا توجد اقتراحات مرسلة حتى الآن.",
     suggestionDate: "التاريخ",
     suggestionSender: "المرسل",
@@ -607,7 +665,7 @@ function setLanguage(language) {
   if (page === "admin" && (adminState.shipments.length || adminState.suggestions.length)) {
     renderShipmentOptions(adminState.shipments);
     syncSelectedShipmentNotes();
-    renderAnalytics(adminState.shipments, adminState.suggestions);
+    renderAnalytics(adminState.shipments, adminState.suggestions, adminState.ratings);
     renderShipmentsTable(adminState.shipments);
     renderSuggestionsTable(adminState.suggestions);
     renderRatingsTable(adminState.ratings);
@@ -1001,6 +1059,29 @@ function buildCustomerWhatsappLink(trackingNumber) {
   return `https://wa.me/${phone}?text=${encodeURIComponent(localeMessage)}`;
 }
 
+function syncPublicContactLinks() {
+  const facebookUrl =
+    APP_CONFIG.FACEBOOK_PAGE_URL || "https://www.facebook.com/profile.php?id=61578351116421";
+  const mapUrl =
+    APP_CONFIG.OFFICE_MAP_URL || "https://maps.app.goo.gl/eyDLE6YMAkQst1qK8?g_st=iw";
+  const supportUrl = buildCustomerWhatsappLink("support");
+
+  const facebookLink = document.getElementById("facebookPageLink");
+  if (facebookLink) {
+    facebookLink.href = facebookUrl;
+  }
+
+  const supportLink = document.getElementById("supportContactLink");
+  if (supportLink) {
+    supportLink.href = supportUrl;
+  }
+
+  const officeLink = document.getElementById("officeLocationLink");
+  if (officeLink) {
+    officeLink.href = mapUrl;
+  }
+}
+
 function syncSupportWhatsappLink(trackingNumber = "") {
   const whatsappLink = document.getElementById("whatsappLink");
   if (!whatsappLink) {
@@ -1255,6 +1336,7 @@ function setupTrackingPage() {
   renderSearchHistory();
   renderTimeline([]);
   syncSupportWhatsappLink();
+  syncPublicContactLinks();
 
   const customerTabs = Array.from(document.querySelectorAll("[data-customer-tab]"));
   const customerPanels = Array.from(document.querySelectorAll("[data-customer-panel]"));
@@ -1503,15 +1585,56 @@ function syncSelectedShipmentNotes() {
   notesInput.value = getSelectedShipment()?.internal_notes || "";
 }
 
-function renderAnalytics(shipments, suggestions) {
+function renderAnalytics(shipments, suggestions, ratings = []) {
   const delivered = shipments.filter((shipment) => shipment.progress >= 100).length;
+  const withFiles = shipments.filter((shipment) => Number(shipment.files_count || 0) > 0).length;
+  const withoutFiles = shipments.length - withFiles;
   const suggestionsCount = Array.isArray(suggestions) ? suggestions.length : 0;
+  const avgRating = ratings.length
+    ? (ratings.reduce((sum, rating) => sum + Number(rating.rating || 0), 0) / ratings.length).toFixed(1)
+    : "0.0";
+  const latestShipment = shipments
+    .slice()
+    .sort((first, second) => new Date(second.last_update_time).getTime() - new Date(first.last_update_time).getTime())[0];
   document.getElementById("analyticsTotal").textContent = shipments.length;
   document.getElementById("analyticsDelivered").textContent = delivered;
   document.getElementById("analyticsTransit").textContent = shipments.length - delivered;
+  const withFilesNode = document.getElementById("analyticsWithFiles");
+  if (withFilesNode) withFilesNode.textContent = withFiles;
+  const withoutFilesNode = document.getElementById("analyticsWithoutFiles");
+  if (withoutFilesNode) withoutFilesNode.textContent = withoutFiles;
+  const avgRatingNode = document.getElementById("analyticsAvgRating");
+  if (avgRatingNode) avgRatingNode.textContent = avgRating;
+  const latestUpdateNode = document.getElementById("analyticsLatestUpdate");
+  if (latestUpdateNode) latestUpdateNode.textContent = latestShipment ? formatDate(latestShipment.last_update_time) : "--";
   const suggestionsNode = document.getElementById("analyticsSuggestions");
   if (suggestionsNode) {
     suggestionsNode.textContent = suggestionsCount;
+  }
+  const activityNode = document.getElementById("analyticsRecentList");
+  if (activityNode) {
+    const recentShipments = shipments
+      .slice()
+      .sort((first, second) => new Date(second.last_update_time).getTime() - new Date(first.last_update_time).getTime())
+      .slice(0, 5);
+    activityNode.innerHTML = recentShipments.length
+      ? recentShipments
+          .map(
+            (shipment) => `
+              <article class="activity-item">
+                <div>
+                  <strong>${escapeHtml(shipment.tracking_number)}</strong>
+                  <p>${escapeHtml(currentLanguage === "ar" ? shipment.arabic_status : shipment.english_status)}</p>
+                </div>
+                <div class="activity-meta">
+                  <span>${shipment.progress}%</span>
+                  <small>${formatDate(shipment.last_update_time)}</small>
+                </div>
+              </article>
+            `
+          )
+          .join("")
+      : `<div class="empty-state">${t("noRecentActivity")}</div>`;
   }
 }
 
@@ -1659,7 +1782,7 @@ async function loadAdminData() {
 
   renderShipmentOptions(sortedShipments);
   syncSelectedShipmentNotes();
-  renderAnalytics(sortedShipments, sortedSuggestions);
+  renderAnalytics(sortedShipments, sortedSuggestions, ratings);
   renderShipmentsTable(sortedShipments);
   renderSuggestionsTable(sortedSuggestions);
   renderRatingsTable(ratings);

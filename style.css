@@ -435,11 +435,48 @@ textarea {
   background: var(--surface-soft);
 }
 
+.analytics-highlight {
+  background:
+    linear-gradient(135deg, rgba(217, 154, 122, 0.24), rgba(159, 98, 74, 0.08)),
+    var(--surface-soft);
+  border: 1px solid rgba(217, 154, 122, 0.24);
+}
+
 .metric-box strong,
 .analytics-card strong {
   display: block;
   margin-top: 8px;
   font-size: 1.1rem;
+}
+
+.dashboard-activity-card {
+  padding: 24px;
+}
+
+.activity-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--surface-soft);
+}
+
+.activity-item p,
+.activity-meta small {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.activity-meta {
+  text-align: end;
 }
 
 .metric-subtext {
@@ -509,6 +546,74 @@ body.light-mode .status-badge {
 
 .about-card .card-label {
   margin-bottom: 10px;
+}
+
+.brand-story-card,
+.contact-footer-card {
+  padding: 28px;
+}
+
+.brand-story-text {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.why-grid,
+.contact-links-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.why-card,
+.contact-link-card {
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+}
+
+.why-card strong,
+.contact-link-card strong {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.why-card p,
+.contact-link-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.contact-link-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  color: var(--text);
+  text-decoration: none;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.contact-link-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(217, 154, 122, 0.32);
+  background: rgba(217, 154, 122, 0.12);
+}
+
+.contact-link-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--accent), var(--gold));
+  color: #fff;
+  font-weight: 900;
+  flex: 0 0 auto;
 }
 
 .progress-track {

@@ -70,10 +70,36 @@
               <span class="metric-label" data-i18n="suggestionsCount">Suggestions</span>
               <strong id="analyticsSuggestions">0</strong>
             </article>
+            <article class="glass-card analytics-card analytics-highlight">
+              <span class="metric-label" data-i18n="withFilesCount">With Files</span>
+              <strong id="analyticsWithFiles">0</strong>
+            </article>
+            <article class="glass-card analytics-card">
+              <span class="metric-label" data-i18n="withoutFilesCount">Without Files</span>
+              <strong id="analyticsWithoutFiles">0</strong>
+            </article>
+            <article class="glass-card analytics-card">
+              <span class="metric-label" data-i18n="avgRatingMetric">Average Rating</span>
+              <strong id="analyticsAvgRating">0.0</strong>
+            </article>
+            <article class="glass-card analytics-card analytics-highlight">
+              <span class="metric-label" data-i18n="latestUpdateMetric">Latest Update</span>
+              <strong id="analyticsLatestUpdate">--</strong>
+            </article>
             <article class="glass-card analytics-card logout-card">
               <button class="danger-btn" id="logoutBtn" type="button" data-i18n="logout">Logout</button>
             </article>
           </div>
+
+          <section class="glass-card dashboard-activity-card">
+            <div class="section-title-row">
+              <div>
+                <p class="card-label" data-i18n="latestActivity">Latest Activity</p>
+                <h2 data-i18n="latestActivitySubtitle">Most recently updated shipments</h2>
+              </div>
+            </div>
+            <div class="activity-list" id="analyticsRecentList"></div>
+          </section>
 
           <div class="admin-grid">
             <article class="glass-card admin-form-card">
