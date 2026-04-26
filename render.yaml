@@ -31,9 +31,5 @@ services:
         value: ""
       - key: ALLOWED_ORIGINS
         value: ""
-      - key: APP_COPY_PROTECTION
-        value: optional
-      - key: APP_ALLOW_LOCALHOST
-        value: false
       - key: WHATSAPP_PROVIDER
         value: mock

@@ -5,7 +5,6 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "license:key": "node tools/generate-license-key.js",
     "admin:hash": "node tools/generate-admin-password-hash.js"
   },
   "keywords": [
