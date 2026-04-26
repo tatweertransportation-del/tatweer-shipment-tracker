@@ -40,3 +40,25 @@ If the report is determined not to be a security issue, or if there is not enoug
 Please keep vulnerability details confidential until the issue has been reviewed and resolved.
 
 Public disclosure before a fix is available may put users, shipment data, or operational systems at risk.
+
+## Copy Protection
+
+The server supports a runtime host/license lock to make copied deployments fail outside approved hosts.
+
+Set these environment variables in production:
+
+- `APP_COPY_PROTECTION=required`
+- `APP_ALLOWED_HOSTS=example.com,www.example.com`
+- `APP_LICENSE_SECRET=<private random secret>`
+- `APP_LICENSE_KEY=<generated key>`
+- `APP_ALLOW_LOCALHOST=false`
+
+Generate the license key with:
+
+```sh
+npm run license:key -- "<private random secret>" example.com www.example.com
+```
+
+The generated key is tied to the sorted `APP_ALLOWED_HOSTS` list. If the host list changes, generate a new key.
+
+This protects runtime use, not physical file access. Anyone with full access to source files and production secrets can still copy or modify the application, so production secrets should stay outside the repository and server access should be limited.

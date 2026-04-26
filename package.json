@@ -4,7 +4,8 @@
   "description": "Professional bilingual shipment tracking system with admin dashboard and WhatsApp notifications.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "license:key": "node tools/generate-license-key.js"
   },
   "keywords": [
     "shipment",

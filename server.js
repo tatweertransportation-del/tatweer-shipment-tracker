@@ -25,6 +25,15 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
   .split(",")
   .map((item) => item.trim())
   .filter(Boolean);
+const APP_ID = "tatweer-shipment-tracking";
+const APP_LICENSE_VERSION = "v1";
+const APP_COPY_PROTECTION = String(process.env.APP_COPY_PROTECTION || "optional").toLowerCase();
+const APP_ALLOWED_HOSTS = parseHostList(process.env.APP_ALLOWED_HOSTS);
+const APP_LICENSE_KEY = String(process.env.APP_LICENSE_KEY || "").trim();
+const APP_LICENSE_SECRET = String(process.env.APP_LICENSE_SECRET || "").trim();
+const ALLOW_LOCALHOST_HOST =
+  String(process.env.APP_ALLOW_LOCALHOST || (APP_COPY_PROTECTION === "required" ? "false" : "true"))
+    .toLowerCase() === "true";
 const RATE_LIMIT_WINDOWS = {
   login: {
     windowMs: 15 * 60 * 1000,
@@ -35,6 +44,8 @@ const RATE_LIMIT_WINDOWS = {
 const rateLimitStore = new Map();
 const AUTH_COOKIE_NAME = "tatweer_admin_session";
 const CSRF_COOKIE_NAME = "tatweer_admin_csrf";
+
+verifyApplicationLicense();
 
 const database = createDatabase({
   dbPath: DATABASE_FILE,
@@ -71,6 +82,69 @@ function loadEnvFile(filePath) {
 
 function normalizeBaseUrl(value) {
   return String(value || "").trim().replace(/\/+$/, "");
+}
+
+function normalizeHost(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "")
+    .replace(/:\d+$/, "");
+}
+
+function parseHostList(value) {
+  return String(value || "")
+    .split(",")
+    .map(normalizeHost)
+    .filter(Boolean)
+    .filter((host, index, list) => list.indexOf(host) === index)
+    .sort();
+}
+
+function isLocalhostHost(value) {
+  const host = normalizeHost(value);
+  return host === "localhost" || host === "127.0.0.1" || host === "::1";
+}
+
+function createLicenseSignature(allowedHosts, secret) {
+  return crypto
+    .createHmac("sha256", secret)
+    .update(`${APP_ID}:${APP_LICENSE_VERSION}:${allowedHosts.join(",")}`)
+    .digest("base64url");
+}
+
+function verifyApplicationLicense() {
+  const required = APP_COPY_PROTECTION === "required" || process.env.NODE_ENV === "production";
+  const issues = [];
+
+  if (!APP_ALLOWED_HOSTS.length) {
+    issues.push("APP_ALLOWED_HOSTS is required");
+  }
+  if (!APP_LICENSE_KEY) {
+    issues.push("APP_LICENSE_KEY is required");
+  }
+  if (!APP_LICENSE_SECRET) {
+    issues.push("APP_LICENSE_SECRET is required");
+  }
+
+  if (!issues.length) {
+    const expectedKey = createLicenseSignature(APP_ALLOWED_HOSTS, APP_LICENSE_SECRET);
+    if (!safeCompare(APP_LICENSE_KEY, expectedKey)) {
+      issues.push("APP_LICENSE_KEY does not match APP_ALLOWED_HOSTS");
+    }
+  }
+
+  if (!issues.length) {
+    return;
+  }
+
+  const message = `Application copy protection failed: ${issues.join("; ")}`;
+  if (required) {
+    throw new Error(message);
+  }
+
+  console.warn(`${message}. Running in optional protection mode.`);
 }
 
 function isLocalhostUrl(value) {
@@ -171,6 +245,21 @@ function getPublicBaseUrl(req) {
   }
 
   return requestOrigin;
+}
+
+function getRequestHost(req) {
+  return normalizeHost(req.headers["x-forwarded-host"] || req.headers.host || "");
+}
+
+function isAllowedApplicationHost(req) {
+  const host = getRequestHost(req);
+  if (!host) {
+    return false;
+  }
+  if (ALLOW_LOCALHOST_HOST && isLocalhostHost(host)) {
+    return true;
+  }
+  return !APP_ALLOWED_HOSTS.length || APP_ALLOWED_HOSTS.includes(host);
 }
 
 function buildTrackingLink(trackingNumber, req) {
@@ -813,15 +902,29 @@ function isValidIsoDate(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(String(value || "").trim());
 }
 
-function isPublicAsset(filePath) {
-  const extension = path.extname(filePath).toLowerCase();
-  return [".html", ".css", ".js", ".json", ".png", ".jpg", ".jpeg", ".svg", ".ico"].includes(extension);
+function isPublicAsset(relativePath) {
+  const normalizedPath = relativePath.replace(/\\/g, "/");
+  const extension = path.extname(normalizedPath).toLowerCase();
+  const publicRootFiles = new Set(["index.html", "admin.html", "style.css", "script.js", "config.js"]);
+
+  if (publicRootFiles.has(normalizedPath)) {
+    return true;
+  }
+
+  return normalizedPath.startsWith("assets/") && [".png", ".jpg", ".jpeg", ".svg", ".ico", ".webp"].includes(extension);
 }
 
 function serveStaticAsset(res, filePath) {
   const safePath = path.normalize(filePath).replace(/^(\.\.[/\\])+/, "");
-  const absolutePath = path.join(__dirname, safePath);
-  if (!absolutePath.startsWith(__dirname) || !fs.existsSync(absolutePath) || !isPublicAsset(absolutePath)) {
+  const absolutePath = path.resolve(__dirname, safePath);
+  const relativePath = path.relative(__dirname, absolutePath);
+  if (
+    relativePath.startsWith("..") ||
+    path.isAbsolute(relativePath) ||
+    !isPublicAsset(relativePath) ||
+    !fs.existsSync(absolutePath) ||
+    !fs.statSync(absolutePath).isFile()
+  ) {
     sendText(res, 404, "Not Found");
     return;
   }
@@ -836,6 +939,7 @@ function serveStaticAsset(res, filePath) {
     ".png": "image/png",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
     ".ico": "image/x-icon"
   };
 
@@ -1029,6 +1133,11 @@ const server = http.createServer(async (req, res) => {
   const pathname = decodeURIComponent(requestUrl.pathname);
 
   try {
+    if (!isAllowedApplicationHost(req)) {
+      sendJson(res, 403, { error: "This application is not licensed for this host" });
+      return;
+    }
+
     if (req.method === "OPTIONS") {
       res.writeHead(204);
       res.end();
@@ -1627,7 +1736,8 @@ const server = http.createServer(async (req, res) => {
 
     sendJson(res, 404, { error: "Not found" });
   } catch (error) {
-    sendJson(res, 500, { error: error.message || "Internal server error" });
+    console.error("Unhandled request error:", error);
+    sendJson(res, 500, { error: "Internal server error" });
   }
 });
 
