@@ -115,31 +115,32 @@ function createLicenseSignature(allowedHosts, secret) {
 }
 
 function verifyApplicationLicense() {
-  const required = APP_COPY_PROTECTION === "required" || process.env.NODE_ENV === "production";
-  const issues = [];
+  const required = APP_COPY_PROTECTION === "required";
+  const missingConfig = [];
 
   if (!APP_ALLOWED_HOSTS.length) {
-    issues.push("APP_ALLOWED_HOSTS is required");
+    missingConfig.push("APP_ALLOWED_HOSTS");
   }
   if (!APP_LICENSE_KEY) {
-    issues.push("APP_LICENSE_KEY is required");
+    missingConfig.push("APP_LICENSE_KEY");
   }
   if (!APP_LICENSE_SECRET) {
-    issues.push("APP_LICENSE_SECRET is required");
+    missingConfig.push("APP_LICENSE_SECRET");
   }
 
-  if (!issues.length) {
-    const expectedKey = createLicenseSignature(APP_ALLOWED_HOSTS, APP_LICENSE_SECRET);
-    if (!safeCompare(APP_LICENSE_KEY, expectedKey)) {
-      issues.push("APP_LICENSE_KEY does not match APP_ALLOWED_HOSTS");
-    }
-  }
-
-  if (!issues.length) {
+  if (missingConfig.length) {
+    console.warn(
+      `Application copy protection is not active because these settings are missing: ${missingConfig.join(", ")}.`
+    );
     return;
   }
 
-  const message = `Application copy protection failed: ${issues.join("; ")}`;
+  const expectedKey = createLicenseSignature(APP_ALLOWED_HOSTS, APP_LICENSE_SECRET);
+  if (safeCompare(APP_LICENSE_KEY, expectedKey)) {
+    return;
+  }
+
+  const message = "Application copy protection failed: APP_LICENSE_KEY does not match APP_ALLOWED_HOSTS";
   if (required) {
     throw new Error(message);
   }

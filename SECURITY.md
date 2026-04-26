@@ -62,3 +62,15 @@ npm run license:key -- "<private random secret>" example.com www.example.com
 The generated key is tied to the sorted `APP_ALLOWED_HOSTS` list. If the host list changes, generate a new key.
 
 This protects runtime use, not physical file access. Anyone with full access to source files and production secrets can still copy or modify the application, so production secrets should stay outside the repository and server access should be limited.
+
+## Admin Password Hash
+
+Production should use `ADMIN_PASSWORD_HASH` instead of storing `ADMIN_PASSWORD` as plain text.
+
+Generate a hash with:
+
+```sh
+npm run admin:hash -- "your-strong-admin-password"
+```
+
+Set the output as `ADMIN_PASSWORD_HASH`, then leave `ADMIN_PASSWORD` empty.
