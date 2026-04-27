@@ -610,43 +610,53 @@ function getLatestShipmentLocation(shipment) {
 
 function buildAdminShipmentMessage(shipment, messageType = "update", language = shipment.preferred_language || "ar") {
   const isEnglish = language === "en";
+  const messageLocale = isEnglish ? "en-US" : "ar-EG";
   const location = getLatestShipmentLocation(shipment);
-  const locationLineEn = location ? `Current Location: ${location}\n` : "";
-  const locationLineAr = location ? `الموقع الحالي: ${location}\n` : "";
+  const locationLine = location
+    ? isEnglish
+      ? `Current Location: ${location}\n`
+      : `الموقع الحالي: ${location}\n`
+    : "";
+  const messageCopy = isEnglish
+    ? {
+        company: "Tatweer Logistics",
+        greeting: "Dear customer,",
+        title: messageType === "create" ? "Your shipment has been registered." : "Your shipment has a new update.",
+        trackingLabel: "Tracking Number",
+        statusLabel: "Current Status",
+        deliveryLabel: "Estimated Delivery",
+        linkLabel: "Track your shipment here:",
+        closing: "At Tatweer, we deliver with care, accuracy, and commitment.",
+        thanks: "Thank you for choosing us."
+      }
+    : {
+        company: "تطوير للخدمات اللوجستية",
+        greeting: "عزيزنا العميل،",
+        title: messageType === "create" ? "تم تسجيل شحنتكم بنجاح." : "يوجد تحديث جديد على شحنتكم.",
+        trackingLabel: "رقم الشحنة",
+        statusLabel: "الحالة الحالية",
+        deliveryLabel: "موعد التسليم المتوقع",
+        linkLabel: "رابط التتبع:",
+        closing: "في تطوير، نلتزم بالدقة والسرعة والاهتمام بكل تفاصيل شحنتكم.",
+        thanks: "نشكركم على ثقتكم بنا."
+      };
+  const statusText = isEnglish ? shipment.english_status : shipment.arabic_status;
+  const deliveryText = formatDate(shipment.delivery_date, messageLocale);
 
-  if (isEnglish) {
-    const title = messageType === "create" ? "Your shipment has been registered." : "Your shipment has a new update.";
-    return `Tatweer Logistics
+  return `${messageCopy.company}
 
-Dear customer,
-${title}
+${messageCopy.greeting}
+${messageCopy.title}
 
-Tracking Number: ${shipment.tracking_number}
-Current Status: ${shipment.english_status}
-${locationLineEn}Estimated Delivery: ${formatDate(shipment.delivery_date)}
+${messageCopy.trackingLabel}: ${shipment.tracking_number}
+${messageCopy.statusLabel}: ${statusText}
+${locationLine}${messageCopy.deliveryLabel}: ${deliveryText}
 
-Track your shipment here:
+${messageCopy.linkLabel}
 ${shipment.tracking_link}
 
-At Tatweer, we deliver with care, accuracy, and commitment.
-Thank you for choosing us.`;
-  }
-
-  const title = messageType === "create" ? "تم تسجيل شحنتكم بنجاح." : "يوجد تحديث جديد على شحنتكم.";
-  return `تطوير للخدمات اللوجستية
-
-عزيزنا العميل،
-${title}
-
-رقم الشحنة: ${shipment.tracking_number}
-الحالة الحالية: ${shipment.arabic_status}
-${locationLineAr}موعد التسليم المتوقع: ${formatDate(shipment.delivery_date)}
-
-رابط التتبع:
-${shipment.tracking_link}
-
-في تطوير، نلتزم بالدقة والسرعة والاهتمام بكل تفاصيل شحنتكم.
-نشكركم على ثقتكم بنا.`;
+${messageCopy.closing}
+${messageCopy.thanks}`;
 }
 
 function buildBilingualAdminShipmentMessage(shipment, messageType = "update") {
@@ -746,11 +756,11 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-function formatDate(dateString) {
+function formatDate(dateString, localeOverride = "") {
   if (!dateString) {
     return "--";
   }
-  const locale = currentLanguage === "ar" ? "ar-EG" : "en-US";
+  const locale = localeOverride || (currentLanguage === "ar" ? "ar-EG" : "en-US");
   return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: dateString.includes("T") ? "short" : undefined
