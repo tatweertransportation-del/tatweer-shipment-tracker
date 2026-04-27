@@ -28,8 +28,8 @@ services:
       - key: ADMIN_SESSION_SECRET
         sync: false
       - key: TRACKING_BASE_URL
-        value: ""
+        value: "https://tatweerlogistics.com"
       - key: ALLOWED_ORIGINS
-        value: ""
+        value: "https://tatweerlogistics.com"
       - key: WHATSAPP_PROVIDER
         value: mock

@@ -1,6 +1,6 @@
 window.APP_CONFIG = {
   API_BASE_URL: "",
-  APP_BASE_URL: "",
+  APP_BASE_URL: "https://tatweerlogistics.com",
   SUPPORT_WHATSAPP_NUMBER: "01019552952",
   DEVELOPER_WHATSAPP_NUMBER: "01070761515"
 };
