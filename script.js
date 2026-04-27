@@ -608,7 +608,7 @@ function getLatestShipmentLocation(shipment) {
   return String(lastEntry?.location || "").trim();
 }
 
-function buildAdminShipmentMessage(shipment, messageType = "update", language = shipment.preferred_language || "ar") {
+function buildAdminShipmentMessage(shipment, messageType = "update", language = shipment.preferred_language || currentLanguage || "ar") {
   const isEnglish = language === "en";
   const messageLocale = isEnglish ? "en-US" : "ar-EG";
   const location = getLatestShipmentLocation(shipment);
@@ -1629,6 +1629,11 @@ function getSelectedShipment() {
   return adminState.shipments.find((shipment) => shipment.tracking_number === trackingNumber) || null;
 }
 
+function getShipmentByTrackingNumber(trackingNumber) {
+  const normalizedTrackingNumber = String(trackingNumber || "").trim().toUpperCase();
+  return adminState.shipments.find((shipment) => shipment.tracking_number === normalizedTrackingNumber) || null;
+}
+
 function syncSelectedShipmentNotes() {
   const notesInput = document.getElementById("internalNotesInput");
   if (!notesInput) {
@@ -2096,6 +2101,9 @@ function setupAdminPage() {
     event.preventDefault();
     const manualTrackingNumber = document.getElementById("manualUpdateTrackingInput").value.trim();
     const trackingNumber = manualTrackingNumber || document.getElementById("shipmentSelect").value;
+    const shipmentForUpdate = manualTrackingNumber
+      ? getShipmentByTrackingNumber(manualTrackingNumber)
+      : getSelectedShipment();
     if (!trackingNumber) {
       notify(t("noShipmentSelected"));
       return;
@@ -2113,6 +2121,7 @@ function setupAdminPage() {
           location: document.getElementById("locationInput").value,
           internal_notes: document.getElementById("internalNotesInput").value,
           progress: document.getElementById("progressInput").value,
+          preferred_language: shipmentForUpdate?.preferred_language || currentLanguage,
           send_whatsapp: false
         })
       });
