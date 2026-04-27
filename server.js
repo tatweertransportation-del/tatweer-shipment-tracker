@@ -852,7 +852,7 @@ function requireCsrf(req, res, session) {
 }
 
 function normalizeTrackingNumber(value) {
-  return String(value || "")
+  return normalizeLocalizedDigits(value)
     .trim()
     .toUpperCase();
 }
@@ -876,7 +876,7 @@ function sanitizeMultilineText(value, maxLength = 1000) {
 }
 
 function sanitizePhoneNumber(value) {
-  const normalized = String(value || "").replace(/[^\d+]/g, "").trim();
+  const normalized = normalizeLocalizedDigits(value).replace(/[^\d+]/g, "").trim();
   return normalized.slice(0, 18);
 }
 
@@ -900,7 +900,23 @@ function normalizeProgressValue(value) {
 }
 
 function isValidIsoDate(value) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || "").trim());
+  return /^\d{4}-\d{2}-\d{2}$/.test(normalizeLocalizedDigits(value).trim());
+}
+
+function normalizeLocalizedDigits(value) {
+  return String(value || "").replace(/[٠-٩۰-۹]/g, (digit) => {
+    const arabicIndicDigits = "٠١٢٣٤٥٦٧٨٩";
+    const easternArabicIndicDigits = "۰۱۲۳۴۵۶۷۸۹";
+    const arabicIndicIndex = arabicIndicDigits.indexOf(digit);
+    if (arabicIndicIndex !== -1) {
+      return String(arabicIndicIndex);
+    }
+    const easternArabicIndicIndex = easternArabicIndicDigits.indexOf(digit);
+    if (easternArabicIndicIndex !== -1) {
+      return String(easternArabicIndicIndex);
+    }
+    return digit;
+  });
 }
 
 function isPublicAsset(relativePath) {
@@ -1595,18 +1611,33 @@ const server = http.createServer(async (req, res) => {
       const normalizedPhoneNumber = sanitizePhoneNumber(phone_number);
       const normalizedArabicStatus = sanitizeText(arabic_status, 160);
       const normalizedEnglishStatus = sanitizeText(english_status, 160);
-      const normalizedDeliveryDate = String(delivery_date || "").trim();
+      const normalizedDeliveryDate = normalizeLocalizedDigits(delivery_date).trim();
       const normalizedPreferredLanguage = sanitizeLanguage(preferred_language);
       const normalizedProgress = normalizeProgressValue(progress);
 
+      const validationErrors = [];
+      if (!isValidTrackingNumber(normalizedTrackingNumber)) {
+        validationErrors.push("tracking_number");
+      }
+      if (!isValidPhoneNumber(normalizedPhoneNumber)) {
+        validationErrors.push("phone_number");
+      }
+      if (!normalizedArabicStatus) {
+        validationErrors.push("arabic_status");
+      }
+      if (!normalizedEnglishStatus) {
+        validationErrors.push("english_status");
+      }
+      if (!isValidIsoDate(normalizedDeliveryDate)) {
+        validationErrors.push("delivery_date");
+      }
+
       if (
-        !isValidTrackingNumber(normalizedTrackingNumber) ||
-        !isValidPhoneNumber(normalizedPhoneNumber) ||
-        !normalizedArabicStatus ||
-        !normalizedEnglishStatus ||
-        !isValidIsoDate(normalizedDeliveryDate)
+        validationErrors.length
       ) {
-        sendJson(res, 400, { error: "Missing required fields" });
+        sendJson(res, 400, {
+          error: `Invalid or missing fields: ${validationErrors.join(", ")}`
+        });
         return;
       }
 

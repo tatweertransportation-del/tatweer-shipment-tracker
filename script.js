@@ -541,7 +541,7 @@ async function copyTrackingLink(trackingNumber) {
 }
 
 function normalizeWhatsappContactNumber(phoneNumber) {
-  const cleaned = String(phoneNumber || "").replace(/[^\d]/g, "");
+  const cleaned = normalizeLocalizedDigits(phoneNumber).replace(/[^\d]/g, "");
   if (!cleaned) {
     return "";
   }
@@ -552,8 +552,8 @@ function normalizeWhatsappContactNumber(phoneNumber) {
 }
 
 function normalizePhoneWithCountryCode(countryCode, phoneNumber) {
-  const code = String(countryCode || "").replace(/[^\d]/g, "");
-  let phone = String(phoneNumber || "").replace(/[^\d]/g, "");
+  const code = normalizeLocalizedDigits(countryCode).replace(/[^\d]/g, "");
+  let phone = normalizeLocalizedDigits(phoneNumber).replace(/[^\d+]/g, "");
   if (!phone) {
     return "";
   }
@@ -575,6 +575,22 @@ function normalizePhoneWithCountryCode(countryCode, phoneNumber) {
   }
 
   return `${code}${phone}`;
+}
+
+function normalizeLocalizedDigits(value) {
+  return String(value || "").replace(/[٠-٩۰-۹]/g, (digit) => {
+    const arabicIndicDigits = "٠١٢٣٤٥٦٧٨٩";
+    const easternArabicIndicDigits = "۰۱۲۳۴۵۶۷۸۹";
+    const arabicIndicIndex = arabicIndicDigits.indexOf(digit);
+    if (arabicIndicIndex !== -1) {
+      return String(arabicIndicIndex);
+    }
+    const easternArabicIndicIndex = easternArabicIndicDigits.indexOf(digit);
+    if (easternArabicIndicIndex !== -1) {
+      return String(easternArabicIndicIndex);
+    }
+    return digit;
+  });
 }
 
 function getLatestShipmentLocation(shipment) {
@@ -2030,15 +2046,16 @@ function setupAdminPage() {
   document.getElementById("shipmentForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
+      const createBilingualWhatsapp = document.getElementById("createBilingualWhatsappCheckbox").checked;
       const createdShipment = await api("/api/shipments", {
         method: "POST",
         body: JSON.stringify({
-          tracking_number: document.getElementById("trackingNumberInput").value,
-          phone_number: document.getElementById("customerPhoneInput").value,
+          tracking_number: normalizeLocalizedDigits(document.getElementById("trackingNumberInput").value).trim(),
+          phone_number: normalizeLocalizedDigits(document.getElementById("customerPhoneInput").value).trim(),
           arabic_status: document.getElementById("arabicStatusInput").value,
           english_status: document.getElementById("englishStatusInput").value,
           preferred_language: document.getElementById("preferredLanguageInput").value,
-          delivery_date: document.getElementById("deliveryDateInput").value,
+          delivery_date: normalizeLocalizedDigits(document.getElementById("deliveryDateInput").value).trim(),
           progress: document.getElementById("createProgressInput").value
         })
       });
@@ -2048,7 +2065,6 @@ function setupAdminPage() {
       document.getElementById("createProgressInput").value = "25";
       await loadAdminData();
 
-      const createBilingualWhatsapp = document.getElementById("createBilingualWhatsappCheckbox").checked;
       const opened =
         createdShipment && openCustomerUpdateWhatsapp(createdShipment, "create", createBilingualWhatsapp);
       notify(`${t("addShipmentSuccess")}${opened ? ` ${t("whatsappOpened")}` : ""}`);
