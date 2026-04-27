@@ -193,7 +193,7 @@ function createSupabaseDatabase(options) {
   async function getUpdatesMap() {
     const updates = await request("GET", "shipment_updates", {
       query: {
-        select: "tracking_number,arabic_status,english_status,timestamp,location,progress",
+        select: "id,tracking_number,arabic_status,english_status,timestamp,location,progress",
         order: "timestamp.asc"
       }
     });
@@ -203,6 +203,7 @@ function createSupabaseDatabase(options) {
         map.set(row.tracking_number, []);
       }
       map.get(row.tracking_number).push({
+        id: row.id,
         arabic_status: row.arabic_status,
         english_status: row.english_status,
         timestamp: row.timestamp,
@@ -281,7 +282,7 @@ function createSupabaseDatabase(options) {
 
     const updates = await request("GET", "shipment_updates", {
       query: {
-        select: "arabic_status,english_status,timestamp,location,progress",
+        select: "id,arabic_status,english_status,timestamp,location,progress",
         tracking_number: `eq.${trackingNumber}`,
         order: "timestamp.asc"
       }
@@ -292,6 +293,7 @@ function createSupabaseDatabase(options) {
       internal_notes: shipment.internal_notes || "",
       preferred_language: shipment.preferred_language === "en" ? "en" : "ar",
       history: updates.map((row) => ({
+        id: row.id,
         arabic_status: row.arabic_status,
         english_status: row.english_status,
         timestamp: row.timestamp,
@@ -426,6 +428,49 @@ function createSupabaseDatabase(options) {
     });
 
     return true;
+  }
+
+  async function deleteShipmentUpdate(trackingNumber, updateId) {
+    const current = await getShipment(trackingNumber);
+    if (!current) {
+      return null;
+    }
+
+    const targetUpdate = current.history.find((item) => item.id === updateId);
+    if (!targetUpdate || current.history.length <= 1) {
+      return null;
+    }
+
+    await request("DELETE", "shipment_updates", {
+      query: {
+        tracking_number: `eq.${trackingNumber}`,
+        id: `eq.${updateId}`
+      },
+      prefer: "return=minimal"
+    });
+
+    const refreshed = await getShipment(trackingNumber);
+    const latestUpdate = refreshed?.history?.[refreshed.history.length - 1];
+    if (!refreshed || !latestUpdate) {
+      return refreshed;
+    }
+
+    await request("PATCH", "shipments", {
+      query: { tracking_number: `eq.${trackingNumber}` },
+      body: {
+        arabic_status: latestUpdate.arabic_status,
+        english_status: latestUpdate.english_status,
+        last_update_time: latestUpdate.timestamp
+      },
+      prefer: "return=minimal"
+    });
+
+    appendAuditLog("shipment.update_deleted", {
+      tracking_number: trackingNumber,
+      update_id: updateId
+    });
+
+    return getShipment(trackingNumber);
   }
 
   async function getAllSuggestions() {
@@ -687,6 +732,7 @@ function createSupabaseDatabase(options) {
     restoreBackup,
     createShipment,
     updateShipment,
+    deleteShipmentUpdate,
     deleteShipment,
     getAllSuggestions,
     createSuggestion,

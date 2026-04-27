@@ -222,11 +222,27 @@ const TRANSLATIONS = {
     latestActivity: "Latest Activity",
     latestActivitySubtitle: "Most recently updated shipments",
     noRecentActivity: "No recent shipment activity yet.",
+    shipmentTimelineAdmin: "Shipment Updates",
+    shipmentTimelineAdminSubtitle: "Manage the selected shipment update history",
+    noShipmentUpdatesAdmin: "No shipment updates available for this shipment yet.",
+    deleteShipmentUpdate: "Delete update",
+    deleteShipmentUpdateConfirm: "Delete this shipment update? The shipment will return to the previous update if this was the latest one.",
+    deleteShipmentUpdateSuccess: "Shipment update deleted successfully.",
+    deleteShipmentUpdateError: "Unable to delete shipment update.",
+    updateRequestInProgress: "The shipment update is already being saved. Please wait.",
     noSuggestions: "No suggestions have been submitted yet.",
     suggestionDate: "Date",
     suggestionSender: "Sender",
     suggestionDetails: "Details",
     suggestionMessageColumn: "Suggestion",
+    shipmentTimelineAdmin: "Shipment Updates",
+    shipmentTimelineAdminSubtitle: "Manage the selected shipment update history",
+    noShipmentUpdatesAdmin: "No shipment updates available for this shipment yet.",
+    deleteShipmentUpdate: "Delete update",
+    deleteShipmentUpdateConfirm: "Delete this shipment update? The shipment will return to the previous update if this was the latest one.",
+    deleteShipmentUpdateSuccess: "Shipment update deleted successfully.",
+    deleteShipmentUpdateError: "Unable to delete shipment update.",
+    updateRequestInProgress: "The shipment update is already being saved. Please wait.",
     anonymousSender: "Anonymous",
     themeLight: "☀",
     themeDark: "🌙"
@@ -464,6 +480,26 @@ const TRANSLATIONS = {
 };
 
 const page = document.body.dataset.page;
+Object.assign(TRANSLATIONS.en, {
+  shipmentTimelineAdmin: "Shipment Updates",
+  shipmentTimelineAdminSubtitle: "Manage the selected shipment update history",
+  noShipmentUpdatesAdmin: "No shipment updates available for this shipment yet.",
+  deleteShipmentUpdate: "Delete update",
+  deleteShipmentUpdateConfirm: "Delete this shipment update? The shipment will return to the previous update if this was the latest one.",
+  deleteShipmentUpdateSuccess: "Shipment update deleted successfully.",
+  deleteShipmentUpdateError: "Unable to delete shipment update.",
+  updateRequestInProgress: "The shipment update is already being saved. Please wait."
+});
+Object.assign(TRANSLATIONS.ar, {
+  shipmentTimelineAdmin: "\u062a\u062d\u062f\u064a\u062b\u0627\u062a \u0627\u0644\u0634\u062d\u0646\u0629",
+  shipmentTimelineAdminSubtitle: "\u0625\u062f\u0627\u0631\u0629 \u0633\u062c\u0644 \u062a\u062d\u062f\u064a\u062b\u0627\u062a \u0627\u0644\u0634\u062d\u0646\u0629 \u0627\u0644\u0645\u062e\u062a\u0627\u0631\u0629",
+  noShipmentUpdatesAdmin: "\u0644\u0627 \u062a\u0648\u062c\u062f \u062a\u062d\u062f\u064a\u062b\u0627\u062a \u0645\u062a\u0627\u062d\u0629 \u0644\u0647\u0630\u0647 \u0627\u0644\u0634\u062d\u0646\u0629 \u062d\u062a\u0649 \u0627\u0644\u0622\u0646.",
+  deleteShipmentUpdate: "\u062d\u0630\u0641 \u0627\u0644\u062a\u062d\u062f\u064a\u062b",
+  deleteShipmentUpdateConfirm: "\u0647\u0644 \u062a\u0631\u064a\u062f \u062d\u0630\u0641 \u0647\u0630\u0627 \u0627\u0644\u062a\u062d\u062f\u064a\u062b\u061f \u0625\u0630\u0627 \u0643\u0627\u0646 \u0647\u0648 \u0622\u062e\u0631 \u062a\u062d\u062f\u064a\u062b \u0641\u0633\u062a\u0639\u0648\u062f \u0627\u0644\u0634\u062d\u0646\u0629 \u0625\u0644\u0649 \u0627\u0644\u062a\u062d\u062f\u064a\u062b \u0627\u0644\u0633\u0627\u0628\u0642.",
+  deleteShipmentUpdateSuccess: "\u062a\u0645 \u062d\u0630\u0641 \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u0634\u062d\u0646\u0629 \u0628\u0646\u062c\u0627\u062d.",
+  deleteShipmentUpdateError: "\u062a\u0639\u0630\u0631 \u062d\u0630\u0641 \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u0634\u062d\u0646\u0629.",
+  updateRequestInProgress: "\u064a\u062c\u0631\u064a \u062d\u0641\u0638 \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u0634\u062d\u0646\u0629 \u0628\u0627\u0644\u0641\u0639\u0644. \u0628\u0631\u062c\u0627\u0621 \u0627\u0644\u0627\u0646\u062a\u0638\u0627\u0631."
+});
 const storageKeys = {
   language: "shipment-language",
   theme: "shipment-theme",
@@ -482,6 +518,7 @@ let adminState = {
   suggestions: [],
   ratings: []
 };
+let adminUpdateRequestInFlight = false;
 
 function normalizeBaseUrl(value) {
   return String(value || "").trim().replace(/\/+$/, "");
@@ -1082,6 +1119,33 @@ async function deleteShipmentFileFromAdmin(fileId) {
   renderAdminShipmentFiles(result.files || []);
 }
 
+async function deleteShipmentUpdateFromAdmin(updateId) {
+  const shipment = getSelectedShipment();
+  if (!shipment?.tracking_number || !updateId) {
+    return false;
+  }
+
+  if (!window.confirm(t("deleteShipmentUpdateConfirm"))) {
+    return false;
+  }
+
+  const result = await api(
+    `/api/shipments/${encodeURIComponent(shipment.tracking_number)}/updates/${encodeURIComponent(updateId)}`,
+    { method: "DELETE" }
+  );
+
+  if (result?.shipment) {
+    adminState.shipments = adminState.shipments.map((item) =>
+      item.tracking_number === result.shipment.tracking_number ? result.shipment : item
+    );
+    renderShipmentOptions(adminState.shipments);
+    syncSelectedShipmentNotes();
+    renderAnalytics(adminState.shipments, adminState.suggestions, adminState.ratings);
+    renderShipmentsTable(adminState.shipments);
+  }
+  return true;
+}
+
 function renderTimeline(history = []) {
   const container = document.getElementById("timelineContainer");
   if (!container) {
@@ -1593,6 +1657,8 @@ function setAdminView(isLoggedIn) {
 function renderShipmentOptions(shipments) {
   const select = document.getElementById("shipmentSelect");
   const filesSelect = document.getElementById("filesShipmentSelect");
+  const currentShipmentSelection = select?.value || "";
+  const currentFilesSelection = filesSelect?.value || "";
 
   const activeShipments = shipments.filter((shipment) => !isCompletedShipment(shipment));
 
@@ -1608,6 +1674,9 @@ function renderShipmentOptions(shipments) {
             }</option>`
         )
         .join("");
+      if (activeShipments.some((shipment) => shipment.tracking_number === currentShipmentSelection)) {
+        select.value = currentShipmentSelection;
+      }
     }
   }
 
@@ -1620,6 +1689,9 @@ function renderShipmentOptions(shipments) {
           }</option>`
       )
       .join("");
+    if (shipments.some((shipment) => shipment.tracking_number === currentFilesSelection)) {
+      filesSelect.value = currentFilesSelection;
+    }
     loadAdminShipmentFiles();
   }
 }
@@ -1640,6 +1712,48 @@ function syncSelectedShipmentNotes() {
     return;
   }
   notesInput.value = getSelectedShipment()?.internal_notes || "";
+  renderAdminShipmentUpdates();
+}
+
+function renderAdminShipmentUpdates() {
+  const container = document.getElementById("adminShipmentUpdatesList");
+  if (!container) {
+    return;
+  }
+
+  const shipment = getSelectedShipment();
+  const history = Array.isArray(shipment?.history) ? shipment.history.slice().reverse() : [];
+  if (!history.length) {
+    container.innerHTML = `<div class="empty-state">${t("noShipmentUpdatesAdmin")}</div>`;
+    return;
+  }
+
+  container.innerHTML = history
+    .map((item) => {
+      const statusText = currentLanguage === "ar" ? item.arabic_status : item.english_status;
+      const locationText = item.location ? ` • ${escapeHtml(item.location)}` : "";
+      const canDelete = history.length > 1;
+      return `
+        <article class="activity-item">
+          <div>
+            <strong>${escapeHtml(statusText)}</strong>
+            <p>${formatDate(item.timestamp)}${locationText}</p>
+          </div>
+          <div class="activity-meta">
+            <span>${Number(item.progress || 0)}%</span>
+            <button
+              class="text-btn danger-text-btn"
+              type="button"
+              data-delete-update-id="${escapeHtml(item.id || "")}"
+              ${canDelete ? "" : "disabled"}
+            >
+              ${t("deleteShipmentUpdate")}
+            </button>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
 }
 
 function renderAnalytics(shipments, suggestions, ratings = []) {
@@ -2003,6 +2117,25 @@ function setupAdminPage() {
     syncSelectedShipmentNotes();
   });
 
+  document.getElementById("adminShipmentUpdatesList")?.addEventListener("click", async (event) => {
+    const deleteButton = event.target.closest("[data-delete-update-id]");
+    if (!deleteButton || deleteButton.disabled) {
+      return;
+    }
+
+    try {
+      deleteButton.disabled = true;
+      const deleted = await deleteShipmentUpdateFromAdmin(deleteButton.dataset.deleteUpdateId);
+      if (deleted) {
+        notify(t("deleteShipmentUpdateSuccess"));
+      }
+    } catch (error) {
+      notify(`${t("deleteShipmentUpdateError")} ${error.message}`);
+    } finally {
+      deleteButton.disabled = false;
+    }
+  });
+
   document.getElementById("filesShipmentSelect")?.addEventListener("change", () => {
     renderShipmentFilesWhatsappAction();
     loadAdminShipmentFiles();
@@ -2099,6 +2232,10 @@ function setupAdminPage() {
 
   document.getElementById("updateForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (adminUpdateRequestInFlight) {
+      notify(t("updateRequestInProgress"));
+      return;
+    }
     const manualTrackingNumber = document.getElementById("manualUpdateTrackingInput").value.trim();
     const trackingNumber = manualTrackingNumber || document.getElementById("shipmentSelect").value;
     const shipmentForUpdate = manualTrackingNumber
@@ -2111,8 +2248,13 @@ function setupAdminPage() {
 
     const sendWhatsapp = document.getElementById("sendWhatsappCheckbox").checked;
     const sendBilingualWhatsapp = document.getElementById("bilingualWhatsappCheckbox").checked;
+    const submitButton = event.target.querySelector('button[type="submit"]');
 
     try {
+      adminUpdateRequestInFlight = true;
+      if (submitButton) {
+        submitButton.disabled = true;
+      }
       const result = await api(`/api/shipments/${encodeURIComponent(trackingNumber)}`, {
         method: "PUT",
         body: JSON.stringify({
@@ -2132,6 +2274,11 @@ function setupAdminPage() {
       notify(`${t("updateShipmentSuccess")}${opened ? ` ${t("whatsappOpened")}` : ""}`);
     } catch (error) {
       notify(`${t("updateShipmentError")} ${error.message}`);
+    } finally {
+      adminUpdateRequestInFlight = false;
+      if (submitButton) {
+        submitButton.disabled = false;
+      }
     }
   });
 

@@ -1721,6 +1721,36 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (pathname.startsWith("/api/shipments/") && pathname.includes("/updates/") && req.method === "DELETE") {
+      const session = getSessionFromRequest(req);
+      if (!session) {
+        sendJson(res, 401, { error: "Unauthorized" });
+        return;
+      }
+      if (!requireCsrf(req, res, session)) {
+        return;
+      }
+
+      const parts = pathname.split("/").filter(Boolean);
+      const trackingNumber = normalizeTrackingNumber(parts[2]);
+      const updateId = String(parts[4] || "").trim();
+      if (!isValidTrackingNumber(trackingNumber) || !updateId) {
+        sendJson(res, 400, { error: "Invalid shipment update request" });
+        return;
+      }
+
+      const shipment = await database.deleteShipmentUpdate(trackingNumber, updateId);
+      if (!shipment) {
+        sendJson(res, 404, { error: "Shipment update not found or cannot be deleted" });
+        return;
+      }
+
+      sendJson(res, 200, {
+        shipment: withDerivedFields(shipment, req)
+      });
+      return;
+    }
+
     if (pathname.startsWith("/api/shipments/") && req.method === "DELETE") {
       const session = getSessionFromRequest(req);
       if (!session) {

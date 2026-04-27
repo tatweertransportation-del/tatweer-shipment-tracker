@@ -297,6 +297,7 @@ function createSqliteDatabase(options) {
     }
 
     const history = updatesByShipmentQuery.all(row.tracking_number).map((update) => ({
+      id: update.id,
       arabic_status: update.arabic_status,
       english_status: update.english_status,
       timestamp: update.timestamp,
@@ -373,6 +374,7 @@ function createSqliteDatabase(options) {
   `);
 
   const deleteShipmentStatement = db.prepare("DELETE FROM shipments WHERE tracking_number = ?");
+  const deleteShipmentUpdateStatement = db.prepare("DELETE FROM shipment_updates WHERE tracking_number = ? AND id = ?");
   const filesByShipmentQuery = db.prepare(`
     SELECT
       id,
@@ -682,6 +684,44 @@ function createSqliteDatabase(options) {
         tracking_number: trackingNumber
       });
       return true;
+    },
+
+    deleteShipmentUpdate(trackingNumber, updateId) {
+      const current = this.getShipment(trackingNumber);
+      if (!current) {
+        return null;
+      }
+
+      const updateExists = current.history.some((item) => item.id === updateId);
+      if (!updateExists || current.history.length <= 1) {
+        return null;
+      }
+
+      runInTransaction(() => {
+        deleteShipmentUpdateStatement.run(trackingNumber, updateId);
+        const remainingHistory = updatesByShipmentQuery.all(trackingNumber);
+        const latestUpdate = remainingHistory[remainingHistory.length - 1];
+        if (!latestUpdate) {
+          return;
+        }
+
+        updateShipmentStatement.run(
+          current.phone_number,
+          latestUpdate.arabic_status,
+          latestUpdate.english_status,
+          latestUpdate.timestamp,
+          current.delivery_date,
+          current.preferred_language,
+          current.internal_notes || "",
+          trackingNumber
+        );
+      });
+
+      appendAuditLog("shipment.update_deleted", {
+        tracking_number: trackingNumber,
+        update_id: updateId
+      });
+      return this.getShipment(trackingNumber);
     },
 
     getAllSuggestions() {
