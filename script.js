@@ -541,11 +541,20 @@ async function copyTrackingLink(trackingNumber) {
 }
 
 function normalizeWhatsappContactNumber(phoneNumber) {
-  const cleaned = normalizeLocalizedDigits(phoneNumber).replace(/[^\d]/g, "");
+  let cleaned = normalizeLocalizedDigits(phoneNumber).replace(/[^\d+]/g, "").trim();
+  if (cleaned.startsWith("+")) {
+    cleaned = cleaned.slice(1);
+  }
+  if (cleaned.startsWith("00")) {
+    cleaned = cleaned.slice(2);
+  }
+  cleaned = cleaned.replace(/[^\d]/g, "");
   if (!cleaned) {
     return "";
   }
-  if (cleaned.startsWith("0")) {
+
+  // Local mobile numbers are treated as Egypt numbers when no country code is present.
+  if (/^0\d+$/.test(cleaned)) {
     return `2${cleaned}`;
   }
   return cleaned;
