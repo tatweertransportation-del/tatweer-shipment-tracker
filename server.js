@@ -903,8 +903,8 @@ function isValidIsoDate(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(normalizeLocalizedDigits(value).trim());
 }
 
-function getTodayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
+function isValidTimestamp(value) {
+  return !Number.isNaN(new Date(String(value || "")).getTime());
 }
 
 function normalizeLocalizedDigits(value) {
@@ -1608,6 +1608,7 @@ const server = http.createServer(async (req, res) => {
         arabic_status,
         english_status,
         delivery_date,
+        update_timestamp,
         preferred_language,
         progress
       } = requestBody;
@@ -1616,9 +1617,10 @@ const server = http.createServer(async (req, res) => {
       const normalizedPhoneNumber = sanitizePhoneNumber(phone_number);
       const normalizedArabicStatus = sanitizeText(arabic_status, 160);
       const normalizedEnglishStatus = sanitizeText(english_status, 160);
-      const normalizedDeliveryDate = normalizeLocalizedDigits(delivery_date).trim() || getTodayIsoDate();
+      const normalizedDeliveryDate = normalizeLocalizedDigits(delivery_date).trim();
       const normalizedPreferredLanguage = sanitizeLanguage(preferred_language);
       const normalizedProgress = normalizeProgressValue(progress);
+      const normalizedUpdateTimestamp = update_timestamp ? String(update_timestamp).trim() : "";
 
       const validationErrors = [];
       if (!isValidTrackingNumber(normalizedTrackingNumber)) {
@@ -1635,6 +1637,9 @@ const server = http.createServer(async (req, res) => {
       }
       if (!isValidIsoDate(normalizedDeliveryDate)) {
         validationErrors.push("delivery_date");
+      }
+      if (normalizedUpdateTimestamp && !isValidTimestamp(normalizedUpdateTimestamp)) {
+        validationErrors.push("update_timestamp");
       }
 
       if (
@@ -1658,6 +1663,7 @@ const server = http.createServer(async (req, res) => {
         arabic_status: normalizedArabicStatus,
         english_status: normalizedEnglishStatus,
         delivery_date: normalizedDeliveryDate,
+        update_timestamp: normalizedUpdateTimestamp || undefined,
         preferred_language: normalizedPreferredLanguage,
         progress: normalizedProgress
       });
@@ -1682,16 +1688,15 @@ const server = http.createServer(async (req, res) => {
         arabic_status,
         english_status,
         delivery_date,
+        update_timestamp,
         phone_number,
         progress,
         location,
         internal_notes,
         preferred_language
       } = requestBody;
-      const hasDeliveryDateField = Object.prototype.hasOwnProperty.call(requestBody, "delivery_date");
-      const normalizedDeliveryDate = hasDeliveryDateField
-        ? normalizeLocalizedDigits(String(delivery_date || "")).trim() || getTodayIsoDate()
-        : undefined;
+      const normalizedDeliveryDate = delivery_date ? normalizeLocalizedDigits(String(delivery_date)).trim() : undefined;
+      const normalizedUpdateTimestamp = update_timestamp ? String(update_timestamp).trim() : undefined;
       const normalizedPhoneNumber = phone_number ? sanitizePhoneNumber(phone_number) : undefined;
 
       if (!isValidTrackingNumber(trackingNumber)) {
@@ -1706,11 +1711,16 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, 400, { error: "Invalid phone number" });
         return;
       }
+      if (normalizedUpdateTimestamp && !isValidTimestamp(normalizedUpdateTimestamp)) {
+        sendJson(res, 400, { error: "Invalid update timestamp" });
+        return;
+      }
 
       const shipment = await database.updateShipment(trackingNumber, {
         arabic_status: sanitizeText(arabic_status, 160),
         english_status: sanitizeText(english_status, 160),
         delivery_date: normalizedDeliveryDate,
+        update_timestamp: normalizedUpdateTimestamp,
         phone_number: normalizedPhoneNumber,
         progress: normalizeProgressValue(progress),
         location: sanitizeText(location, 160),

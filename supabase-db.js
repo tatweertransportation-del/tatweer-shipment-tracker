@@ -304,7 +304,7 @@ function createSupabaseDatabase(options) {
   }
 
   async function createShipment(payload) {
-    const timestamp = new Date().toISOString();
+    const timestamp = payload.update_timestamp || new Date().toISOString();
     const shipment = {
       tracking_number: payload.tracking_number.trim().toUpperCase(),
       phone_number: normalizePhoneNumber(payload.phone_number, defaultCountryCode),
@@ -363,24 +363,39 @@ function createSupabaseDatabase(options) {
       return null;
     }
 
-    const timestamp = new Date().toISOString();
+    const timestamp = payload.update_timestamp || new Date().toISOString();
+    const nextArabicStatus = payload.arabic_status ? payload.arabic_status.trim() : current.arabic_status;
+    const nextEnglishStatus = payload.english_status ? payload.english_status.trim() : current.english_status;
+    const progress = Number.isFinite(Number(payload.progress))
+      ? Number(payload.progress)
+      : Number(current.history[current.history.length - 1]?.progress || 0);
+    const newUpdate = {
+      id: crypto.randomUUID(),
+      tracking_number: trackingNumber,
+      arabic_status: nextArabicStatus,
+      english_status: nextEnglishStatus,
+      timestamp,
+      location: payload.location || "",
+      progress
+    };
+    const latestUpdate = current.history
+      .concat(newUpdate)
+      .slice()
+      .sort((first, second) => new Date(first.timestamp).getTime() - new Date(second.timestamp).getTime())
+      .at(-1);
     const nextShipment = {
       phone_number: payload.phone_number
         ? normalizePhoneNumber(payload.phone_number, defaultCountryCode)
         : current.phone_number,
-      arabic_status: payload.arabic_status ? payload.arabic_status.trim() : current.arabic_status,
-      english_status: payload.english_status ? payload.english_status.trim() : current.english_status,
-      last_update_time: timestamp,
+      arabic_status: latestUpdate?.arabic_status || nextArabicStatus,
+      english_status: latestUpdate?.english_status || nextEnglishStatus,
+      last_update_time: latestUpdate?.timestamp || timestamp,
       delivery_date: payload.delivery_date || current.delivery_date,
       preferred_language: payload.preferred_language === "en" ? "en" : current.preferred_language,
       ...(supportsInternalNotes && payload.internal_notes !== undefined
         ? { internal_notes: String(payload.internal_notes || "").trim() }
         : {})
     };
-
-    const progress = Number.isFinite(Number(payload.progress))
-      ? Number(payload.progress)
-      : Number(current.history[current.history.length - 1]?.progress || 0);
 
     await request("PATCH", "shipments", {
       query: { tracking_number: `eq.${trackingNumber}` },
@@ -389,23 +404,15 @@ function createSupabaseDatabase(options) {
     });
 
     await request("POST", "shipment_updates", {
-      body: {
-        id: crypto.randomUUID(),
-        tracking_number: trackingNumber,
-        arabic_status: nextShipment.arabic_status,
-        english_status: nextShipment.english_status,
-        timestamp,
-        location: payload.location || "",
-        progress
-      },
+      body: newUpdate,
       prefer: "return=minimal"
     });
 
     appendAuditLog("shipment.updated", {
       tracking_number: trackingNumber,
-      arabic_status: nextShipment.arabic_status,
-      english_status: nextShipment.english_status,
-      location: payload.location || "",
+      arabic_status: newUpdate.arabic_status,
+      english_status: newUpdate.english_status,
+      location: newUpdate.location,
       progress
     });
 

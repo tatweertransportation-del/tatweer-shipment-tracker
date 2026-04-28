@@ -176,6 +176,7 @@ const TRANSLATIONS = {
     englishStatus: "English Status",
     preferredLanguage: "Preferred Language",
     deliveryDate: "Estimated Delivery Date",
+    updateTimestamp: "Update Date and Time",
     addShipment: "Add Shipment",
     statusUpdates: "Status Updates",
     updateShipment: "Update Shipment Status",
@@ -422,6 +423,7 @@ const TRANSLATIONS = {
     englishStatus: "الحالة بالإنجليزية",
     preferredLanguage: "اللغة المفضلة",
     deliveryDate: "تاريخ التسليم المتوقع",
+    updateTimestamp: "تاريخ ووقت التحديث",
     addShipment: "إضافة الشحنة",
     statusUpdates: "تحديثات الحالة",
     updateShipment: "تحديث حالة الشحنة",
@@ -661,6 +663,7 @@ function buildAdminShipmentMessage(shipment, messageType = "update", language = 
         title: messageType === "create" ? "Your shipment has been registered." : "Your shipment has a new update.",
         trackingLabel: "Tracking Number",
         statusLabel: "Current Status",
+        updateLabel: "Last Update",
         deliveryLabel: "Estimated Delivery",
         linkLabel: "Track your shipment here:",
         closing: "At Tatweer, we deliver with care, accuracy, and commitment.",
@@ -678,6 +681,8 @@ function buildAdminShipmentMessage(shipment, messageType = "update", language = 
         thanks: "نشكركم على ثقتكم بنا."
       };
   const statusText = isEnglish ? shipment.english_status : shipment.arabic_status;
+  const updateLabel = isEnglish ? "Last Update" : "آخر تحديث";
+  const updateText = formatDate(shipment.last_update_time, messageLocale);
   const deliveryText = formatDate(shipment.delivery_date, messageLocale);
 
   return `${messageCopy.company}
@@ -687,6 +692,7 @@ ${messageCopy.title}
 
 ${messageCopy.trackingLabel}: ${shipment.tracking_number}
 ${messageCopy.statusLabel}: ${statusText}
+${updateLabel}: ${updateText}
 ${locationLine}${messageCopy.deliveryLabel}: ${deliveryText}
 
 ${messageCopy.linkLabel}
@@ -761,7 +767,7 @@ function setLanguage(language) {
 
   if (page === "admin" && (adminState.shipments.length || adminState.suggestions.length)) {
     renderShipmentOptions(adminState.shipments);
-    syncSelectedShipmentFields();
+    syncSelectedShipmentNotes();
     renderAnalytics(adminState.shipments, adminState.suggestions, adminState.ratings);
     renderShipmentsTable(adminState.shipments);
     renderSuggestionsTable(adminState.suggestions);
@@ -804,15 +810,14 @@ function formatDate(dateString, localeOverride = "") {
   }).format(new Date(dateString));
 }
 
-function getTodayIsoDate() {
-  const today = new Date();
-  today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
-  return today.toISOString().slice(0, 10);
-}
-
-function resolveAdminShipmentDate(value) {
+function toIsoTimestampOrEmpty(value) {
   const normalizedValue = normalizeLocalizedDigits(String(value || "")).trim();
-  return normalizedValue || getTodayIsoDate();
+  if (!normalizedValue) {
+    return "";
+  }
+
+  const date = new Date(normalizedValue);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
 }
 
 function formatTimeOnly(dateString) {
@@ -1150,7 +1155,7 @@ async function deleteShipmentUpdateFromAdmin(updateId) {
       item.tracking_number === result.shipment.tracking_number ? result.shipment : item
     );
     renderShipmentOptions(adminState.shipments);
-    syncSelectedShipmentFields();
+    syncSelectedShipmentNotes();
     renderAnalytics(adminState.shipments, adminState.suggestions, adminState.ratings);
     renderShipmentsTable(adminState.shipments);
   }
@@ -1717,20 +1722,12 @@ function getShipmentByTrackingNumber(trackingNumber) {
   return adminState.shipments.find((shipment) => shipment.tracking_number === normalizedTrackingNumber) || null;
 }
 
-function syncSelectedShipmentFields() {
+function syncSelectedShipmentNotes() {
   const notesInput = document.getElementById("internalNotesInput");
-  const updateDeliveryDateInput = document.getElementById("updateDeliveryDateInput");
-  if (!notesInput && !updateDeliveryDateInput) {
+  if (!notesInput) {
     return;
   }
-
-  const selectedShipment = getSelectedShipment();
-  if (notesInput) {
-    notesInput.value = selectedShipment?.internal_notes || "";
-  }
-  if (updateDeliveryDateInput) {
-    updateDeliveryDateInput.value = selectedShipment?.delivery_date || getTodayIsoDate();
-  }
+  notesInput.value = getSelectedShipment()?.internal_notes || "";
   renderAdminShipmentUpdates();
 }
 
@@ -1971,7 +1968,7 @@ async function loadAdminData() {
   };
 
   renderShipmentOptions(sortedShipments);
-  syncSelectedShipmentFields();
+  syncSelectedShipmentNotes();
   renderAnalytics(sortedShipments, sortedSuggestions, ratings);
   renderShipmentsTable(sortedShipments);
   renderSuggestionsTable(sortedSuggestions);
@@ -2056,14 +2053,6 @@ async function saveShipmentFilesFromAdmin() {
 
 function setupAdminPage() {
   localStorage.removeItem("shipment-admin-token");
-  const createDeliveryDateInput = document.getElementById("deliveryDateInput");
-  const updateDeliveryDateInput = document.getElementById("updateDeliveryDateInput");
-  if (createDeliveryDateInput && !createDeliveryDateInput.value) {
-    createDeliveryDateInput.value = getTodayIsoDate();
-  }
-  if (updateDeliveryDateInput && !updateDeliveryDateInput.value) {
-    updateDeliveryDateInput.value = getTodayIsoDate();
-  }
 
   document.getElementById("loginForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -2141,7 +2130,7 @@ function setupAdminPage() {
   });
 
   document.getElementById("shipmentSelect")?.addEventListener("change", () => {
-    syncSelectedShipmentFields();
+    syncSelectedShipmentNotes();
   });
 
   document.getElementById("adminShipmentUpdatesList")?.addEventListener("click", async (event) => {
@@ -2238,8 +2227,9 @@ function setupAdminPage() {
           phone_number: normalizeLocalizedDigits(document.getElementById("customerPhoneInput").value).trim(),
           arabic_status: document.getElementById("arabicStatusInput").value,
           english_status: document.getElementById("englishStatusInput").value,
+          update_timestamp: toIsoTimestampOrEmpty(document.getElementById("createUpdateTimestampInput").value),
           preferred_language: document.getElementById("preferredLanguageInput").value,
-          delivery_date: resolveAdminShipmentDate(document.getElementById("deliveryDateInput").value),
+          delivery_date: normalizeLocalizedDigits(document.getElementById("deliveryDateInput").value).trim(),
           progress: document.getElementById("createProgressInput").value
         })
       });
@@ -2247,7 +2237,6 @@ function setupAdminPage() {
       event.target.reset();
       document.getElementById("preferredLanguageInput").value = "ar";
       document.getElementById("createProgressInput").value = "25";
-      document.getElementById("deliveryDateInput").value = getTodayIsoDate();
       await loadAdminData();
 
       const opened =
@@ -2288,7 +2277,7 @@ function setupAdminPage() {
         body: JSON.stringify({
           arabic_status: document.getElementById("updateArabicStatusInput").value,
           english_status: document.getElementById("updateEnglishStatusInput").value,
-          delivery_date: resolveAdminShipmentDate(document.getElementById("updateDeliveryDateInput").value),
+          update_timestamp: toIsoTimestampOrEmpty(document.getElementById("updateTimestampInput").value),
           location: document.getElementById("locationInput").value,
           internal_notes: document.getElementById("internalNotesInput").value,
           progress: document.getElementById("progressInput").value,
