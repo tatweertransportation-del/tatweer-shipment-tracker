@@ -761,7 +761,7 @@ function setLanguage(language) {
 
   if (page === "admin" && (adminState.shipments.length || adminState.suggestions.length)) {
     renderShipmentOptions(adminState.shipments);
-    syncSelectedShipmentNotes();
+    syncSelectedShipmentFields();
     renderAnalytics(adminState.shipments, adminState.suggestions, adminState.ratings);
     renderShipmentsTable(adminState.shipments);
     renderSuggestionsTable(adminState.suggestions);
@@ -802,6 +802,17 @@ function formatDate(dateString, localeOverride = "") {
     dateStyle: "medium",
     timeStyle: dateString.includes("T") ? "short" : undefined
   }).format(new Date(dateString));
+}
+
+function getTodayIsoDate() {
+  const today = new Date();
+  today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+  return today.toISOString().slice(0, 10);
+}
+
+function resolveAdminShipmentDate(value) {
+  const normalizedValue = normalizeLocalizedDigits(String(value || "")).trim();
+  return normalizedValue || getTodayIsoDate();
 }
 
 function formatTimeOnly(dateString) {
@@ -1139,7 +1150,7 @@ async function deleteShipmentUpdateFromAdmin(updateId) {
       item.tracking_number === result.shipment.tracking_number ? result.shipment : item
     );
     renderShipmentOptions(adminState.shipments);
-    syncSelectedShipmentNotes();
+    syncSelectedShipmentFields();
     renderAnalytics(adminState.shipments, adminState.suggestions, adminState.ratings);
     renderShipmentsTable(adminState.shipments);
   }
@@ -1706,12 +1717,20 @@ function getShipmentByTrackingNumber(trackingNumber) {
   return adminState.shipments.find((shipment) => shipment.tracking_number === normalizedTrackingNumber) || null;
 }
 
-function syncSelectedShipmentNotes() {
+function syncSelectedShipmentFields() {
   const notesInput = document.getElementById("internalNotesInput");
-  if (!notesInput) {
+  const updateDeliveryDateInput = document.getElementById("updateDeliveryDateInput");
+  if (!notesInput && !updateDeliveryDateInput) {
     return;
   }
-  notesInput.value = getSelectedShipment()?.internal_notes || "";
+
+  const selectedShipment = getSelectedShipment();
+  if (notesInput) {
+    notesInput.value = selectedShipment?.internal_notes || "";
+  }
+  if (updateDeliveryDateInput) {
+    updateDeliveryDateInput.value = selectedShipment?.delivery_date || getTodayIsoDate();
+  }
   renderAdminShipmentUpdates();
 }
 
@@ -1952,7 +1971,7 @@ async function loadAdminData() {
   };
 
   renderShipmentOptions(sortedShipments);
-  syncSelectedShipmentNotes();
+  syncSelectedShipmentFields();
   renderAnalytics(sortedShipments, sortedSuggestions, ratings);
   renderShipmentsTable(sortedShipments);
   renderSuggestionsTable(sortedSuggestions);
@@ -2037,6 +2056,14 @@ async function saveShipmentFilesFromAdmin() {
 
 function setupAdminPage() {
   localStorage.removeItem("shipment-admin-token");
+  const createDeliveryDateInput = document.getElementById("deliveryDateInput");
+  const updateDeliveryDateInput = document.getElementById("updateDeliveryDateInput");
+  if (createDeliveryDateInput && !createDeliveryDateInput.value) {
+    createDeliveryDateInput.value = getTodayIsoDate();
+  }
+  if (updateDeliveryDateInput && !updateDeliveryDateInput.value) {
+    updateDeliveryDateInput.value = getTodayIsoDate();
+  }
 
   document.getElementById("loginForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -2114,7 +2141,7 @@ function setupAdminPage() {
   });
 
   document.getElementById("shipmentSelect")?.addEventListener("change", () => {
-    syncSelectedShipmentNotes();
+    syncSelectedShipmentFields();
   });
 
   document.getElementById("adminShipmentUpdatesList")?.addEventListener("click", async (event) => {
@@ -2212,7 +2239,7 @@ function setupAdminPage() {
           arabic_status: document.getElementById("arabicStatusInput").value,
           english_status: document.getElementById("englishStatusInput").value,
           preferred_language: document.getElementById("preferredLanguageInput").value,
-          delivery_date: normalizeLocalizedDigits(document.getElementById("deliveryDateInput").value).trim(),
+          delivery_date: resolveAdminShipmentDate(document.getElementById("deliveryDateInput").value),
           progress: document.getElementById("createProgressInput").value
         })
       });
@@ -2220,6 +2247,7 @@ function setupAdminPage() {
       event.target.reset();
       document.getElementById("preferredLanguageInput").value = "ar";
       document.getElementById("createProgressInput").value = "25";
+      document.getElementById("deliveryDateInput").value = getTodayIsoDate();
       await loadAdminData();
 
       const opened =
@@ -2260,6 +2288,7 @@ function setupAdminPage() {
         body: JSON.stringify({
           arabic_status: document.getElementById("updateArabicStatusInput").value,
           english_status: document.getElementById("updateEnglishStatusInput").value,
+          delivery_date: resolveAdminShipmentDate(document.getElementById("updateDeliveryDateInput").value),
           location: document.getElementById("locationInput").value,
           internal_notes: document.getElementById("internalNotesInput").value,
           progress: document.getElementById("progressInput").value,

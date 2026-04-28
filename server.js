@@ -903,6 +903,10 @@ function isValidIsoDate(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(normalizeLocalizedDigits(value).trim());
 }
 
+function getTodayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function normalizeLocalizedDigits(value) {
   return String(value || "").replace(/[٠-٩۰-۹]/g, (digit) => {
     const arabicIndicDigits = "٠١٢٣٤٥٦٧٨٩";
@@ -1597,6 +1601,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
+      const requestBody = await readRequestBody(req);
       const {
         tracking_number,
         phone_number,
@@ -1605,13 +1610,13 @@ const server = http.createServer(async (req, res) => {
         delivery_date,
         preferred_language,
         progress
-      } = await readRequestBody(req);
+      } = requestBody;
 
       const normalizedTrackingNumber = normalizeTrackingNumber(tracking_number);
       const normalizedPhoneNumber = sanitizePhoneNumber(phone_number);
       const normalizedArabicStatus = sanitizeText(arabic_status, 160);
       const normalizedEnglishStatus = sanitizeText(english_status, 160);
-      const normalizedDeliveryDate = normalizeLocalizedDigits(delivery_date).trim();
+      const normalizedDeliveryDate = normalizeLocalizedDigits(delivery_date).trim() || getTodayIsoDate();
       const normalizedPreferredLanguage = sanitizeLanguage(preferred_language);
       const normalizedProgress = normalizeProgressValue(progress);
 
@@ -1672,6 +1677,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       const trackingNumber = normalizeTrackingNumber(pathname.split("/").pop());
+      const requestBody = await readRequestBody(req);
       const {
         arabic_status,
         english_status,
@@ -1681,8 +1687,11 @@ const server = http.createServer(async (req, res) => {
         location,
         internal_notes,
         preferred_language
-      } = await readRequestBody(req);
-      const normalizedDeliveryDate = delivery_date ? String(delivery_date).trim() : undefined;
+      } = requestBody;
+      const hasDeliveryDateField = Object.prototype.hasOwnProperty.call(requestBody, "delivery_date");
+      const normalizedDeliveryDate = hasDeliveryDateField
+        ? normalizeLocalizedDigits(String(delivery_date || "")).trim() || getTodayIsoDate()
+        : undefined;
       const normalizedPhoneNumber = phone_number ? sanitizePhoneNumber(phone_number) : undefined;
 
       if (!isValidTrackingNumber(trackingNumber)) {
