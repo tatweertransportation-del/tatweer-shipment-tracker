@@ -544,6 +544,14 @@ body[data-page="admin"] .dashboard-activity-card .activity-list {
   text-align: end;
 }
 
+.activity-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 body.light-mode .dashboard-activity-card {
   background:
     linear-gradient(180deg, rgba(255, 249, 245, 0.98), rgba(248, 239, 233, 0.94));
@@ -1065,6 +1073,17 @@ body[data-page="admin"] .admin-files-preview {
 .stack-form .form-field {
   display: grid;
   gap: 8px;
+}
+
+.form-helper {
+  margin: -4px 0 0;
+  color: var(--muted);
+}
+
+.form-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .stack-form .form-field {

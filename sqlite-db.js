@@ -356,6 +356,17 @@ function createSqliteDatabase(options) {
     WHERE tracking_number = ?
   `);
 
+  const updateShipmentUpdateStatement = db.prepare(`
+    UPDATE shipment_updates
+    SET
+      arabic_status = ?,
+      english_status = ?,
+      timestamp = ?,
+      location = ?,
+      progress = ?
+    WHERE tracking_number = ? AND id = ?
+  `);
+
   const insertSuggestion = db.prepare(`
     INSERT INTO suggestions (
       id,
@@ -684,6 +695,66 @@ function createSqliteDatabase(options) {
         progress
       });
       return this.getShipment(nextShipment.tracking_number);
+    },
+
+    updateShipmentUpdate(trackingNumber, updateId, payload) {
+      const current = this.getShipment(trackingNumber);
+      if (!current) {
+        return null;
+      }
+
+      const targetUpdate = current.history.find((item) => item.id === updateId);
+      if (!targetUpdate) {
+        return null;
+      }
+
+      const nextUpdate = {
+        id: updateId,
+        tracking_number: trackingNumber,
+        arabic_status: payload.arabic_status ? payload.arabic_status.trim() : targetUpdate.arabic_status,
+        english_status: payload.english_status ? payload.english_status.trim() : targetUpdate.english_status,
+        timestamp: payload.update_timestamp || targetUpdate.timestamp,
+        location: payload.location !== undefined ? payload.location : targetUpdate.location,
+        progress: Number.isFinite(Number(payload.progress)) ? Number(payload.progress) : Number(targetUpdate.progress || 0)
+      };
+      const latestUpdate = current.history
+        .map((item) => (item.id === updateId ? nextUpdate : item))
+        .slice()
+        .sort((first, second) => new Date(first.timestamp).getTime() - new Date(second.timestamp).getTime())
+        .at(-1);
+
+      runInTransaction(() => {
+        updateShipmentUpdateStatement.run(
+          nextUpdate.arabic_status,
+          nextUpdate.english_status,
+          nextUpdate.timestamp,
+          nextUpdate.location || "",
+          nextUpdate.progress,
+          trackingNumber,
+          updateId
+        );
+
+        updateShipmentStatement.run(
+          current.phone_number,
+          latestUpdate?.arabic_status || current.arabic_status,
+          latestUpdate?.english_status || current.english_status,
+          latestUpdate?.timestamp || current.last_update_time,
+          current.delivery_date,
+          payload.preferred_language === "en" ? "en" : current.preferred_language,
+          payload.internal_notes !== undefined ? String(payload.internal_notes || "").trim() : current.internal_notes,
+          trackingNumber
+        );
+      });
+
+      appendAuditLog("shipment.update_edited", {
+        tracking_number: trackingNumber,
+        update_id: updateId,
+        arabic_status: nextUpdate.arabic_status,
+        english_status: nextUpdate.english_status,
+        location: nextUpdate.location,
+        progress: nextUpdate.progress
+      });
+      return this.getShipment(trackingNumber);
     },
 
     deleteShipment(trackingNumber) {

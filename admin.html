@@ -219,7 +219,11 @@
                   <input type="checkbox" id="bilingualWhatsappCheckbox" />
                   <span data-i18n="sendBilingualWhatsapp">Send Arabic and English in one message</span>
                 </label>
-                <button class="primary-btn" type="submit" data-i18n="saveUpdate">Save Update</button>
+                <p class="form-helper hidden" id="updateEditNotice"></p>
+                <div class="form-action-row">
+                  <button class="primary-btn" id="updateSubmitButton" type="submit" data-i18n="saveUpdate">Save Update</button>
+                  <button class="ghost-btn hidden" id="cancelUpdateEditBtn" type="button" data-i18n="cancelUpdateEdit">Cancel Edit</button>
+                </div>
               </form>
               <div class="section-title-row">
                 <div>

@@ -419,6 +419,66 @@ function createSupabaseDatabase(options) {
     return getShipment(trackingNumber);
   }
 
+  async function updateShipmentUpdate(trackingNumber, updateId, payload) {
+    const current = await getShipment(trackingNumber);
+    if (!current) {
+      return null;
+    }
+
+    const targetUpdate = current.history.find((item) => item.id === updateId);
+    if (!targetUpdate) {
+      return null;
+    }
+
+    const nextUpdate = {
+      arabic_status: payload.arabic_status ? payload.arabic_status.trim() : targetUpdate.arabic_status,
+      english_status: payload.english_status ? payload.english_status.trim() : targetUpdate.english_status,
+      timestamp: payload.update_timestamp || targetUpdate.timestamp,
+      location: payload.location !== undefined ? payload.location : targetUpdate.location,
+      progress: Number.isFinite(Number(payload.progress)) ? Number(payload.progress) : Number(targetUpdate.progress || 0)
+    };
+
+    await request("PATCH", "shipment_updates", {
+      query: {
+        tracking_number: `eq.${trackingNumber}`,
+        id: `eq.${updateId}`
+      },
+      body: nextUpdate,
+      prefer: "return=minimal"
+    });
+
+    const refreshed = await getShipment(trackingNumber);
+    const latestUpdate = refreshed?.history?.[refreshed.history.length - 1];
+    if (!refreshed || !latestUpdate) {
+      return refreshed;
+    }
+
+    await request("PATCH", "shipments", {
+      query: { tracking_number: `eq.${trackingNumber}` },
+      body: {
+        arabic_status: latestUpdate.arabic_status,
+        english_status: latestUpdate.english_status,
+        last_update_time: latestUpdate.timestamp,
+        preferred_language: payload.preferred_language === "en" ? "en" : current.preferred_language,
+        ...(supportsInternalNotes && payload.internal_notes !== undefined
+          ? { internal_notes: String(payload.internal_notes || "").trim() }
+          : {})
+      },
+      prefer: "return=minimal"
+    });
+
+    appendAuditLog("shipment.update_edited", {
+      tracking_number: trackingNumber,
+      update_id: updateId,
+      arabic_status: nextUpdate.arabic_status,
+      english_status: nextUpdate.english_status,
+      location: nextUpdate.location,
+      progress: nextUpdate.progress
+    });
+
+    return getShipment(trackingNumber);
+  }
+
   async function deleteShipment(trackingNumber) {
     const current = await getShipment(trackingNumber);
     if (!current) {
@@ -739,6 +799,7 @@ function createSupabaseDatabase(options) {
     restoreBackup,
     createShipment,
     updateShipment,
+    updateShipmentUpdate,
     deleteShipmentUpdate,
     deleteShipment,
     getAllSuggestions,

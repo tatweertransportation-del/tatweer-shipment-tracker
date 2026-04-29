@@ -1672,6 +1672,62 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (pathname.startsWith("/api/shipments/") && pathname.includes("/updates/") && req.method === "PUT") {
+      const session = getSessionFromRequest(req);
+      if (!session) {
+        sendJson(res, 401, { error: "Unauthorized" });
+        return;
+      }
+      if (!requireCsrf(req, res, session)) {
+        return;
+      }
+
+      const parts = pathname.split("/").filter(Boolean);
+      const trackingNumber = normalizeTrackingNumber(parts[2]);
+      const updateId = String(parts[4] || "").trim();
+      const requestBody = await readRequestBody(req);
+      const {
+        arabic_status,
+        english_status,
+        update_timestamp,
+        progress,
+        location,
+        internal_notes,
+        preferred_language
+      } = requestBody;
+      const normalizedUpdateTimestamp = update_timestamp ? String(update_timestamp).trim() : undefined;
+
+      if (!isValidTrackingNumber(trackingNumber) || !updateId) {
+        sendJson(res, 400, { error: "Invalid shipment update request" });
+        return;
+      }
+      if (normalizedUpdateTimestamp && !isValidTimestamp(normalizedUpdateTimestamp)) {
+        sendJson(res, 400, { error: "Invalid update timestamp" });
+        return;
+      }
+
+      const shipment = await database.updateShipmentUpdate(trackingNumber, updateId, {
+        arabic_status: sanitizeText(arabic_status, 160),
+        english_status: sanitizeText(english_status, 160),
+        update_timestamp: normalizedUpdateTimestamp,
+        progress: normalizeProgressValue(progress),
+        location: sanitizeText(location, 160),
+        internal_notes: sanitizeMultilineText(internal_notes, 1000),
+        preferred_language: preferred_language ? sanitizeLanguage(preferred_language) : undefined
+      });
+
+      if (!shipment) {
+        sendJson(res, 404, { error: "Shipment update not found" });
+        return;
+      }
+
+      sendJson(res, 200, {
+        shipment: withDerivedFields(shipment, req),
+        notification: null
+      });
+      return;
+    }
+
     if (pathname.startsWith("/api/shipments/") && req.method === "PUT") {
       const session = getSessionFromRequest(req);
       if (!session) {

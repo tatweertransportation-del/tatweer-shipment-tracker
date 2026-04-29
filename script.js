@@ -486,21 +486,33 @@ Object.assign(TRANSLATIONS.en, {
   shipmentTimelineAdmin: "Shipment Updates",
   shipmentTimelineAdminSubtitle: "Manage the selected shipment update history",
   noShipmentUpdatesAdmin: "No shipment updates available for this shipment yet.",
+  editShipmentUpdate: "Edit update",
   deleteShipmentUpdate: "Delete update",
   deleteShipmentUpdateConfirm: "Delete this shipment update? The shipment will return to the previous update if this was the latest one.",
   deleteShipmentUpdateSuccess: "Shipment update deleted successfully.",
   deleteShipmentUpdateError: "Unable to delete shipment update.",
-  updateRequestInProgress: "The shipment update is already being saved. Please wait."
+  updateRequestInProgress: "The shipment update is already being saved. Please wait.",
+  saveUpdateChanges: "Save Changes",
+  cancelUpdateEdit: "Cancel Edit",
+  editingShipmentUpdate: "Editing selected shipment update.",
+  editShipmentUpdateSuccess: "Shipment update edited successfully.",
+  editShipmentUpdateError: "Unable to edit shipment update."
 });
 Object.assign(TRANSLATIONS.ar, {
   shipmentTimelineAdmin: "\u062a\u062d\u062f\u064a\u062b\u0627\u062a \u0627\u0644\u0634\u062d\u0646\u0629",
   shipmentTimelineAdminSubtitle: "\u0625\u062f\u0627\u0631\u0629 \u0633\u062c\u0644 \u062a\u062d\u062f\u064a\u062b\u0627\u062a \u0627\u0644\u0634\u062d\u0646\u0629 \u0627\u0644\u0645\u062e\u062a\u0627\u0631\u0629",
   noShipmentUpdatesAdmin: "\u0644\u0627 \u062a\u0648\u062c\u062f \u062a\u062d\u062f\u064a\u062b\u0627\u062a \u0645\u062a\u0627\u062d\u0629 \u0644\u0647\u0630\u0647 \u0627\u0644\u0634\u062d\u0646\u0629 \u062d\u062a\u0649 \u0627\u0644\u0622\u0646.",
+  editShipmentUpdate: "\u062a\u0639\u062f\u064a\u0644 \u0627\u0644\u062a\u062d\u062f\u064a\u062b",
   deleteShipmentUpdate: "\u062d\u0630\u0641 \u0627\u0644\u062a\u062d\u062f\u064a\u062b",
   deleteShipmentUpdateConfirm: "\u0647\u0644 \u062a\u0631\u064a\u062f \u062d\u0630\u0641 \u0647\u0630\u0627 \u0627\u0644\u062a\u062d\u062f\u064a\u062b\u061f \u0625\u0630\u0627 \u0643\u0627\u0646 \u0647\u0648 \u0622\u062e\u0631 \u062a\u062d\u062f\u064a\u062b \u0641\u0633\u062a\u0639\u0648\u062f \u0627\u0644\u0634\u062d\u0646\u0629 \u0625\u0644\u0649 \u0627\u0644\u062a\u062d\u062f\u064a\u062b \u0627\u0644\u0633\u0627\u0628\u0642.",
   deleteShipmentUpdateSuccess: "\u062a\u0645 \u062d\u0630\u0641 \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u0634\u062d\u0646\u0629 \u0628\u0646\u062c\u0627\u062d.",
   deleteShipmentUpdateError: "\u062a\u0639\u0630\u0631 \u062d\u0630\u0641 \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u0634\u062d\u0646\u0629.",
-  updateRequestInProgress: "\u064a\u062c\u0631\u064a \u062d\u0641\u0638 \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u0634\u062d\u0646\u0629 \u0628\u0627\u0644\u0641\u0639\u0644. \u0628\u0631\u062c\u0627\u0621 \u0627\u0644\u0627\u0646\u062a\u0638\u0627\u0631."
+  updateRequestInProgress: "\u064a\u062c\u0631\u064a \u062d\u0641\u0638 \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u0634\u062d\u0646\u0629 \u0628\u0627\u0644\u0641\u0639\u0644. \u0628\u0631\u062c\u0627\u0621 \u0627\u0644\u0627\u0646\u062a\u0638\u0627\u0631.",
+  saveUpdateChanges: "\u062d\u0641\u0638 \u0627\u0644\u062a\u0639\u062f\u064a\u0644",
+  cancelUpdateEdit: "\u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u062a\u0639\u062f\u064a\u0644",
+  editingShipmentUpdate: "\u064a\u062c\u0631\u064a \u062a\u0639\u062f\u064a\u0644 \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u0634\u062d\u0646\u0629 \u0627\u0644\u0645\u062d\u062f\u062f.",
+  editShipmentUpdateSuccess: "\u062a\u0645 \u062a\u0639\u062f\u064a\u0644 \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u0634\u062d\u0646\u0629 \u0628\u0646\u062c\u0627\u062d.",
+  editShipmentUpdateError: "\u062a\u0639\u0630\u0631 \u062a\u0639\u062f\u064a\u0644 \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u0634\u062d\u0646\u0629."
 });
 const storageKeys = {
   language: "shipment-language",
@@ -521,6 +533,7 @@ let adminState = {
   ratings: []
 };
 let adminUpdateRequestInFlight = false;
+let adminEditingUpdateId = "";
 
 function normalizeBaseUrl(value) {
   return String(value || "").trim().replace(/\/+$/, "");
@@ -752,6 +765,8 @@ function setLanguage(language) {
     node.placeholder = t(node.dataset.i18nPlaceholder);
   });
 
+  syncUpdateFormEditingUi();
+
   const languageToggle = document.getElementById("languageToggle");
   if (languageToggle) {
     languageToggle.textContent = currentLanguage === "ar" ? "EN" : "AR";
@@ -818,6 +833,20 @@ function toIsoTimestampOrEmpty(value) {
 
   const date = new Date(normalizedValue);
   return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+}
+
+function toDatetimeLocalValue(dateString) {
+  if (!dateString) {
+    return "";
+  }
+
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function formatTimeOnly(dateString) {
@@ -1160,6 +1189,16 @@ async function deleteShipmentUpdateFromAdmin(updateId) {
     renderShipmentsTable(adminState.shipments);
   }
   return true;
+}
+
+async function editShipmentUpdateFromAdmin(trackingNumber, updateId, payload) {
+  return api(
+    `/api/shipments/${encodeURIComponent(trackingNumber)}/updates/${encodeURIComponent(updateId)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    }
+  );
 }
 
 function renderTimeline(history = []) {
@@ -1731,6 +1770,46 @@ function syncSelectedShipmentNotes() {
   renderAdminShipmentUpdates();
 }
 
+function syncUpdateFormEditingUi() {
+  const submitButton = document.getElementById("updateSubmitButton");
+  const cancelButton = document.getElementById("cancelUpdateEditBtn");
+  const notice = document.getElementById("updateEditNotice");
+
+  if (submitButton) {
+    submitButton.textContent = adminEditingUpdateId ? t("saveUpdateChanges") : t("saveUpdate");
+  }
+  if (cancelButton) {
+    cancelButton.classList.toggle("hidden", !adminEditingUpdateId);
+  }
+  if (notice) {
+    notice.textContent = adminEditingUpdateId ? t("editingShipmentUpdate") : "";
+    notice.classList.toggle("hidden", !adminEditingUpdateId);
+  }
+}
+
+function clearAdminUpdateEditingState() {
+  adminEditingUpdateId = "";
+  syncUpdateFormEditingUi();
+}
+
+function startEditingShipmentUpdate(updateId) {
+  const shipment = getSelectedShipment();
+  const update = shipment?.history?.find((item) => item.id === updateId);
+  if (!shipment || !update) {
+    return;
+  }
+
+  adminEditingUpdateId = update.id;
+  document.getElementById("manualUpdateTrackingInput").value = "";
+  document.getElementById("updateArabicStatusInput").value = update.arabic_status || "";
+  document.getElementById("updateEnglishStatusInput").value = update.english_status || "";
+  document.getElementById("updateTimestampInput").value = toDatetimeLocalValue(update.timestamp);
+  document.getElementById("locationInput").value = update.location || "";
+  document.getElementById("progressInput").value = Number(update.progress || 0);
+  document.getElementById("internalNotesInput").value = shipment.internal_notes || "";
+  syncUpdateFormEditingUi();
+}
+
 function renderAdminShipmentUpdates() {
   const container = document.getElementById("adminShipmentUpdatesList");
   if (!container) {
@@ -1757,14 +1836,23 @@ function renderAdminShipmentUpdates() {
           </div>
           <div class="activity-meta">
             <span>${Number(item.progress || 0)}%</span>
-            <button
-              class="text-btn danger-text-btn"
-              type="button"
-              data-delete-update-id="${escapeHtml(item.id || "")}"
-              ${canDelete ? "" : "disabled"}
-            >
-              ${t("deleteShipmentUpdate")}
-            </button>
+            <div class="activity-actions">
+              <button
+                class="text-btn"
+                type="button"
+                data-edit-update-id="${escapeHtml(item.id || "")}"
+              >
+                ${t("editShipmentUpdate")}
+              </button>
+              <button
+                class="text-btn danger-text-btn"
+                type="button"
+                data-delete-update-id="${escapeHtml(item.id || "")}"
+                ${canDelete ? "" : "disabled"}
+              >
+                ${t("deleteShipmentUpdate")}
+              </button>
+            </div>
           </div>
         </article>
       `;
@@ -2130,10 +2218,17 @@ function setupAdminPage() {
   });
 
   document.getElementById("shipmentSelect")?.addEventListener("change", () => {
+    clearAdminUpdateEditingState();
     syncSelectedShipmentNotes();
   });
 
   document.getElementById("adminShipmentUpdatesList")?.addEventListener("click", async (event) => {
+    const editButton = event.target.closest("[data-edit-update-id]");
+    if (editButton) {
+      startEditingShipmentUpdate(editButton.dataset.editUpdateId);
+      return;
+    }
+
     const deleteButton = event.target.closest("[data-delete-update-id]");
     if (!deleteButton || deleteButton.disabled) {
       return;
@@ -2155,6 +2250,11 @@ function setupAdminPage() {
   document.getElementById("filesShipmentSelect")?.addEventListener("change", () => {
     renderShipmentFilesWhatsappAction();
     loadAdminShipmentFiles();
+  });
+
+  document.getElementById("cancelUpdateEditBtn")?.addEventListener("click", () => {
+    clearAdminUpdateEditingState();
+    syncSelectedShipmentNotes();
   });
 
   document.getElementById("adminShipmentFilesPreview")?.addEventListener("click", async (event) => {
@@ -2272,26 +2372,31 @@ function setupAdminPage() {
       if (submitButton) {
         submitButton.disabled = true;
       }
-      const result = await api(`/api/shipments/${encodeURIComponent(trackingNumber)}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          arabic_status: document.getElementById("updateArabicStatusInput").value,
-          english_status: document.getElementById("updateEnglishStatusInput").value,
-          update_timestamp: toIsoTimestampOrEmpty(document.getElementById("updateTimestampInput").value),
-          location: document.getElementById("locationInput").value,
-          internal_notes: document.getElementById("internalNotesInput").value,
-          progress: document.getElementById("progressInput").value,
-          preferred_language: shipmentForUpdate?.preferred_language || currentLanguage,
-          send_whatsapp: false
-        })
-      });
+      const isEditingUpdate = Boolean(adminEditingUpdateId);
+      const payload = {
+        arabic_status: document.getElementById("updateArabicStatusInput").value,
+        english_status: document.getElementById("updateEnglishStatusInput").value,
+        update_timestamp: toIsoTimestampOrEmpty(document.getElementById("updateTimestampInput").value),
+        location: document.getElementById("locationInput").value,
+        internal_notes: document.getElementById("internalNotesInput").value,
+        progress: document.getElementById("progressInput").value,
+        preferred_language: shipmentForUpdate?.preferred_language || currentLanguage,
+        send_whatsapp: false
+      };
+      const result = isEditingUpdate
+        ? await editShipmentUpdateFromAdmin(trackingNumber, adminEditingUpdateId, payload)
+        : await api(`/api/shipments/${encodeURIComponent(trackingNumber)}`, {
+            method: "PUT",
+            body: JSON.stringify(payload)
+          });
 
       await loadAdminData();
+      clearAdminUpdateEditingState();
       const opened =
         sendWhatsapp && result.shipment && openCustomerUpdateWhatsapp(result.shipment, "update", sendBilingualWhatsapp);
-      notify(`${t("updateShipmentSuccess")}${opened ? ` ${t("whatsappOpened")}` : ""}`);
+      notify(`${t(isEditingUpdate ? "editShipmentUpdateSuccess" : "updateShipmentSuccess")}${opened ? ` ${t("whatsappOpened")}` : ""}`);
     } catch (error) {
-      notify(`${t("updateShipmentError")} ${error.message}`);
+      notify(`${t(adminEditingUpdateId ? "editShipmentUpdateError" : "updateShipmentError")} ${error.message}`);
     } finally {
       adminUpdateRequestInFlight = false;
       if (submitButton) {
