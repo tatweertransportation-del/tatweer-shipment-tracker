@@ -162,11 +162,23 @@
                   <span data-i18n="progressPercent">Progress %</span>
                   <input type="number" id="createProgressInput" min="0" max="100" value="25" />
                 </label>
+                <label>
+                  <span data-i18n="shipmentLocation">Location</span>
+                  <input type="text" id="createLocationInput" />
+                </label>
+                <label>
+                  <span data-i18n="internalNotes">Internal Notes</span>
+                  <textarea id="createInternalNotesInput" rows="3" data-i18n-placeholder="internalNotesPlaceholder" placeholder="Private notes for the operations team only."></textarea>
+                </label>
                 <label class="checkbox-row">
                   <input type="checkbox" id="createBilingualWhatsappCheckbox" />
                   <span data-i18n="sendBilingualWhatsapp">Send Arabic and English in one message</span>
                 </label>
-                <button class="primary-btn" type="submit" data-i18n="addShipment">Add Shipment</button>
+                <p class="form-helper hidden" id="shipmentEditNotice"></p>
+                <div class="form-action-row">
+                  <button class="primary-btn" id="shipmentSubmitButton" type="submit" data-i18n="addShipment">Add Shipment</button>
+                  <button class="ghost-btn hidden" id="cancelShipmentEditBtn" type="button" data-i18n="cancelShipmentEdit">Cancel Edit</button>
+                </div>
               </form>
             </article>
 

@@ -1388,10 +1388,13 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, 404, { error: "Shipment not found" });
         return;
       }
+      const access = await database.getShipmentFileAccess(trackingNumber);
 
       sendJson(res, 200, {
         tracking_number: trackingNumber,
-        files: await database.getShipmentFiles(trackingNumber)
+        files: await database.getShipmentFiles(trackingNumber),
+        phone_number: shipment.phone_number || "",
+        documents_password: access?.password_value || ""
       });
       return;
     }
@@ -1610,7 +1613,9 @@ const server = http.createServer(async (req, res) => {
         delivery_date,
         update_timestamp,
         preferred_language,
-        progress
+        progress,
+        location,
+        internal_notes
       } = requestBody;
 
       const normalizedTrackingNumber = normalizeTrackingNumber(tracking_number);
@@ -1665,10 +1670,89 @@ const server = http.createServer(async (req, res) => {
         delivery_date: normalizedDeliveryDate,
         update_timestamp: normalizedUpdateTimestamp || undefined,
         preferred_language: normalizedPreferredLanguage,
-        progress: normalizedProgress
+        progress: normalizedProgress,
+        location: sanitizeText(location, 160),
+        internal_notes: sanitizeMultilineText(internal_notes, 1000)
       });
 
       sendJson(res, 201, withDerivedFields(shipment, req));
+      return;
+    }
+
+    if (pathname.startsWith("/api/shipments/") && pathname.endsWith("/details") && req.method === "PUT") {
+      const session = getSessionFromRequest(req);
+      if (!session) {
+        sendJson(res, 401, { error: "Unauthorized" });
+        return;
+      }
+      if (!requireCsrf(req, res, session)) {
+        return;
+      }
+
+      const parts = pathname.split("/").filter(Boolean);
+      const trackingNumber = normalizeTrackingNumber(parts[2]);
+      const requestBody = await readRequestBody(req);
+      const {
+        tracking_number,
+        phone_number,
+        arabic_status,
+        english_status,
+        delivery_date,
+        update_timestamp,
+        progress,
+        location,
+        internal_notes,
+        preferred_language
+      } = requestBody;
+      const normalizedTrackingNumber = normalizeTrackingNumber(tracking_number);
+      const normalizedPhoneNumber = sanitizePhoneNumber(phone_number);
+      const normalizedDeliveryDate = delivery_date ? normalizeLocalizedDigits(String(delivery_date)).trim() : "";
+      const normalizedUpdateTimestamp = update_timestamp ? String(update_timestamp).trim() : "";
+
+      if (!isValidTrackingNumber(trackingNumber) || !isValidTrackingNumber(normalizedTrackingNumber)) {
+        sendJson(res, 400, { error: "Invalid tracking number" });
+        return;
+      }
+      if (!isValidPhoneNumber(normalizedPhoneNumber)) {
+        sendJson(res, 400, { error: "Invalid phone number" });
+        return;
+      }
+      if (!isValidIsoDate(normalizedDeliveryDate)) {
+        sendJson(res, 400, { error: "Invalid delivery date" });
+        return;
+      }
+      if (normalizedUpdateTimestamp && !isValidTimestamp(normalizedUpdateTimestamp)) {
+        sendJson(res, 400, { error: "Invalid update timestamp" });
+        return;
+      }
+
+      if (normalizedTrackingNumber !== trackingNumber) {
+        const exists = await database.getShipment(normalizedTrackingNumber);
+        if (exists) {
+          sendJson(res, 409, { error: "Tracking number already exists" });
+          return;
+        }
+      }
+
+      const shipment = await database.updateShipmentDetails(trackingNumber, {
+        tracking_number: normalizedTrackingNumber,
+        phone_number: normalizedPhoneNumber,
+        arabic_status: sanitizeText(arabic_status, 160),
+        english_status: sanitizeText(english_status, 160),
+        delivery_date: normalizedDeliveryDate,
+        update_timestamp: normalizedUpdateTimestamp || undefined,
+        progress: normalizeProgressValue(progress),
+        location: sanitizeText(location, 160),
+        internal_notes: sanitizeMultilineText(internal_notes, 1000),
+        preferred_language: preferred_language ? sanitizeLanguage(preferred_language) : "ar"
+      });
+
+      if (!shipment) {
+        sendJson(res, 404, { error: "Shipment not found" });
+        return;
+      }
+
+      sendJson(res, 200, withDerivedFields(shipment, req));
       return;
     }
 

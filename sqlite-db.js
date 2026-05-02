@@ -39,6 +39,13 @@ function normalizePhoneNumber(phoneNumber, defaultCountryCode) {
   return cleaned;
 }
 
+function hashDocumentsPassword(trackingNumber, password) {
+  return crypto
+    .createHash("sha256")
+    .update(`${String(trackingNumber || "").toUpperCase()}::${String(password || "")}`)
+    .digest("hex");
+}
+
 function createSqliteDatabase(options) {
   const {
     dbPath,
@@ -386,6 +393,15 @@ function createSqliteDatabase(options) {
 
   const deleteShipmentStatement = db.prepare("DELETE FROM shipments WHERE tracking_number = ?");
   const deleteShipmentUpdateStatement = db.prepare("DELETE FROM shipment_updates WHERE tracking_number = ? AND id = ?");
+  const renameShipmentUpdatesTrackingStatement = db.prepare("UPDATE shipment_updates SET tracking_number = ? WHERE tracking_number = ?");
+  const renameShipmentFilesTrackingStatement = db.prepare("UPDATE shipment_files SET tracking_number = ? WHERE tracking_number = ?");
+  const renameShipmentFileAccessTrackingStatement = db.prepare(`
+    UPDATE shipment_file_access
+    SET tracking_number = ?, password_hash = ?, updated_at = ?
+    WHERE tracking_number = ?
+  `);
+  const renameShipmentRatingsTrackingStatement = db.prepare("UPDATE shipment_ratings SET tracking_number = ? WHERE tracking_number = ?");
+  const renameSuggestionsTrackingStatement = db.prepare("UPDATE suggestions SET tracking_number = ? WHERE tracking_number = ?");
   const filesByShipmentQuery = db.prepare(`
     SELECT
       id,
@@ -588,7 +604,7 @@ function createSqliteDatabase(options) {
           arabic_status: shipment.arabic_status,
           english_status: shipment.english_status,
           timestamp,
-          location: "",
+          location: String(payload.location || "").trim(),
           progress: initialProgress
         }
       ];
@@ -693,6 +709,91 @@ function createSqliteDatabase(options) {
         english_status: newUpdate.english_status,
         location: newUpdate.location,
         progress
+      });
+      return this.getShipment(nextShipment.tracking_number);
+    },
+
+    updateShipmentDetails(trackingNumber, payload) {
+      const current = this.getShipment(trackingNumber);
+      if (!current) {
+        return null;
+      }
+
+      const nextTrackingNumber = String(payload.tracking_number || current.tracking_number).trim().toUpperCase();
+      const latestUpdate = current.history[current.history.length - 1] || null;
+      const currentFileAccess = this.getShipmentFileAccess(current.tracking_number);
+      const nextTimestamp = payload.update_timestamp || current.last_update_time || new Date().toISOString();
+      const nextShipment = {
+        tracking_number: nextTrackingNumber,
+        phone_number: payload.phone_number
+          ? normalizePhoneNumber(payload.phone_number, defaultCountryCode)
+          : current.phone_number,
+        arabic_status: payload.arabic_status ? payload.arabic_status.trim() : current.arabic_status,
+        english_status: payload.english_status ? payload.english_status.trim() : current.english_status,
+        last_update_time: nextTimestamp,
+        delivery_date: payload.delivery_date || current.delivery_date,
+        preferred_language: payload.preferred_language === "en" ? "en" : current.preferred_language,
+        internal_notes:
+          payload.internal_notes !== undefined
+            ? String(payload.internal_notes || "").trim()
+            : current.internal_notes
+      };
+
+      runInTransaction(() => {
+        if (nextTrackingNumber !== current.tracking_number) {
+          insertShipment.run(
+            nextShipment.tracking_number,
+            nextShipment.phone_number,
+            nextShipment.arabic_status,
+            nextShipment.english_status,
+            nextShipment.last_update_time,
+            nextShipment.delivery_date,
+            nextShipment.preferred_language,
+            nextShipment.internal_notes
+          );
+
+          renameShipmentUpdatesTrackingStatement.run(nextTrackingNumber, current.tracking_number);
+          renameShipmentFilesTrackingStatement.run(nextTrackingNumber, current.tracking_number);
+          if (currentFileAccess) {
+            renameShipmentFileAccessTrackingStatement.run(
+              nextTrackingNumber,
+              hashDocumentsPassword(nextTrackingNumber, currentFileAccess.password_value || ""),
+              nextTimestamp,
+              current.tracking_number
+            );
+          }
+          renameShipmentRatingsTrackingStatement.run(nextTrackingNumber, current.tracking_number);
+          renameSuggestionsTrackingStatement.run(nextTrackingNumber, current.tracking_number);
+          deleteShipmentStatement.run(current.tracking_number);
+        } else {
+          updateShipmentStatement.run(
+            nextShipment.phone_number,
+            nextShipment.arabic_status,
+            nextShipment.english_status,
+            nextShipment.last_update_time,
+            nextShipment.delivery_date,
+            nextShipment.preferred_language,
+            nextShipment.internal_notes,
+            nextShipment.tracking_number
+          );
+        }
+
+        if (latestUpdate) {
+          updateShipmentUpdateStatement.run(
+            nextShipment.arabic_status,
+            nextShipment.english_status,
+            nextShipment.last_update_time,
+            payload.location !== undefined ? String(payload.location || "").trim() : latestUpdate.location || "",
+            Number.isFinite(Number(payload.progress)) ? Number(payload.progress) : Number(latestUpdate.progress || 0),
+            nextShipment.tracking_number,
+            latestUpdate.id
+          );
+        }
+      });
+
+      appendAuditLog("shipment.details_edited", {
+        tracking_number: current.tracking_number,
+        next_tracking_number: nextShipment.tracking_number
       });
       return this.getShipment(nextShipment.tracking_number);
     },

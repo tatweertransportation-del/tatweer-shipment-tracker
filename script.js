@@ -483,6 +483,12 @@ const TRANSLATIONS = {
 
 const page = document.body.dataset.page;
 Object.assign(TRANSLATIONS.en, {
+  editShipment: "Edit shipment",
+  saveShipmentChanges: "Save Shipment Changes",
+  cancelShipmentEdit: "Cancel Edit",
+  editingShipment: "Editing selected shipment details.",
+  editShipmentSuccess: "Shipment details updated successfully.",
+  editShipmentError: "Unable to update shipment details.",
   shipmentTimelineAdmin: "Shipment Updates",
   shipmentTimelineAdminSubtitle: "Manage the selected shipment update history",
   noShipmentUpdatesAdmin: "No shipment updates available for this shipment yet.",
@@ -499,6 +505,12 @@ Object.assign(TRANSLATIONS.en, {
   editShipmentUpdateError: "Unable to edit shipment update."
 });
 Object.assign(TRANSLATIONS.ar, {
+  editShipment: "\u062a\u0639\u062f\u064a\u0644 \u0627\u0644\u0634\u062d\u0646\u0629",
+  saveShipmentChanges: "\u062d\u0641\u0638 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0634\u062d\u0646\u0629",
+  cancelShipmentEdit: "\u0625\u0644\u063a\u0627\u0621 \u0627\u0644\u062a\u0639\u062f\u064a\u0644",
+  editingShipment: "\u064a\u062c\u0631\u064a \u062a\u0639\u062f\u064a\u0644 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0634\u062d\u0646\u0629 \u0627\u0644\u0645\u062d\u062f\u062f\u0629.",
+  editShipmentSuccess: "\u062a\u0645 \u062a\u062d\u062f\u064a\u062b \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0634\u062d\u0646\u0629 \u0628\u0646\u062c\u0627\u062d.",
+  editShipmentError: "\u062a\u0639\u0630\u0631 \u062a\u062d\u062f\u064a\u062b \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0634\u062d\u0646\u0629.",
   shipmentTimelineAdmin: "\u062a\u062d\u062f\u064a\u062b\u0627\u062a \u0627\u0644\u0634\u062d\u0646\u0629",
   shipmentTimelineAdminSubtitle: "\u0625\u062f\u0627\u0631\u0629 \u0633\u062c\u0644 \u062a\u062d\u062f\u064a\u062b\u0627\u062a \u0627\u0644\u0634\u062d\u0646\u0629 \u0627\u0644\u0645\u062e\u062a\u0627\u0631\u0629",
   noShipmentUpdatesAdmin: "\u0644\u0627 \u062a\u0648\u062c\u062f \u062a\u062d\u062f\u064a\u062b\u0627\u062a \u0645\u062a\u0627\u062d\u0629 \u0644\u0647\u0630\u0647 \u0627\u0644\u0634\u062d\u0646\u0629 \u062d\u062a\u0649 \u0627\u0644\u0622\u0646.",
@@ -534,6 +546,7 @@ let adminState = {
 };
 let adminUpdateRequestInFlight = false;
 let adminEditingUpdateId = "";
+let adminEditingShipmentTracking = "";
 
 function normalizeBaseUrl(value) {
   return String(value || "").trim().replace(/\/+$/, "");
@@ -765,6 +778,7 @@ function setLanguage(language) {
     node.placeholder = t(node.dataset.i18nPlaceholder);
   });
 
+  syncShipmentFormEditingUi();
   syncUpdateFormEditingUi();
 
   const languageToggle = document.getElementById("languageToggle");
@@ -847,6 +861,23 @@ function toDatetimeLocalValue(dateString) {
 
   const pad = (value) => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function getShipmentLastLocation(shipment) {
+  const history = Array.isArray(shipment?.history) ? shipment.history : [];
+  return String(history[history.length - 1]?.location || "").trim();
+}
+
+function buildShipmentFilesWhatsappArtifacts(trackingNumber, phoneNumber, password) {
+  if (!trackingNumber || !password) {
+    return { message: "", whatsappUrl: "" };
+  }
+
+  const message = buildShipmentFilesWhatsappMessage(trackingNumber, password);
+  return {
+    message,
+    whatsappUrl: buildCustomerFilesWhatsappLink(phoneNumber, message)
+  };
 }
 
 function formatTimeOnly(dateString) {
@@ -1140,14 +1171,28 @@ async function loadAdminShipmentFiles() {
   const trackingNumber = document.getElementById("filesShipmentSelect")?.value;
   if (!trackingNumber) {
     renderAdminShipmentFiles([]);
+    renderShipmentFilesMessagePreview("");
+    renderShipmentFilesWhatsappAction("");
     return;
   }
 
   try {
     const result = await api(`/api/admin/shipment-files/${encodeURIComponent(trackingNumber)}`);
     renderAdminShipmentFiles(result.files || []);
+    const hasFiles = Array.isArray(result.files) && result.files.length > 0;
+    const { message, whatsappUrl } = hasFiles
+      ? buildShipmentFilesWhatsappArtifacts(
+          trackingNumber,
+          result.phone_number || "",
+          result.documents_password || ""
+        )
+      : { message: "", whatsappUrl: "" };
+    renderShipmentFilesMessagePreview(message);
+    renderShipmentFilesWhatsappAction(whatsappUrl);
   } catch (error) {
     renderAdminShipmentFiles([]);
+    renderShipmentFilesMessagePreview("");
+    renderShipmentFilesWhatsappAction("");
   }
 }
 
@@ -1770,6 +1815,58 @@ function syncSelectedShipmentNotes() {
   renderAdminShipmentUpdates();
 }
 
+function syncShipmentFormEditingUi() {
+  const submitButton = document.getElementById("shipmentSubmitButton");
+  const cancelButton = document.getElementById("cancelShipmentEditBtn");
+  const notice = document.getElementById("shipmentEditNotice");
+
+  if (submitButton) {
+    submitButton.textContent = adminEditingShipmentTracking ? t("saveShipmentChanges") : t("addShipment");
+  }
+  if (cancelButton) {
+    cancelButton.classList.toggle("hidden", !adminEditingShipmentTracking);
+  }
+  if (notice) {
+    notice.textContent = adminEditingShipmentTracking ? t("editingShipment") : "";
+    notice.classList.toggle("hidden", !adminEditingShipmentTracking);
+  }
+}
+
+function resetShipmentFormToCreateMode() {
+  adminEditingShipmentTracking = "";
+  const form = document.getElementById("shipmentForm");
+  form?.reset();
+  const preferredLanguageInput = document.getElementById("preferredLanguageInput");
+  if (preferredLanguageInput) {
+    preferredLanguageInput.value = "ar";
+  }
+  const progressInput = document.getElementById("createProgressInput");
+  if (progressInput) {
+    progressInput.value = "25";
+  }
+  syncShipmentFormEditingUi();
+}
+
+function startEditingShipment(trackingNumber) {
+  const shipment = getShipmentByTrackingNumber(trackingNumber);
+  if (!shipment) {
+    return;
+  }
+
+  adminEditingShipmentTracking = shipment.tracking_number;
+  document.getElementById("trackingNumberInput").value = shipment.tracking_number || "";
+  document.getElementById("customerPhoneInput").value = shipment.phone_number || "";
+  document.getElementById("arabicStatusInput").value = shipment.arabic_status || "";
+  document.getElementById("englishStatusInput").value = shipment.english_status || "";
+  document.getElementById("createUpdateTimestampInput").value = toDatetimeLocalValue(shipment.last_update_time);
+  document.getElementById("preferredLanguageInput").value = shipment.preferred_language || "ar";
+  document.getElementById("deliveryDateInput").value = shipment.delivery_date || "";
+  document.getElementById("createProgressInput").value = Number(shipment.progress || 0);
+  document.getElementById("createLocationInput").value = getShipmentLastLocation(shipment);
+  document.getElementById("createInternalNotesInput").value = shipment.internal_notes || "";
+  syncShipmentFormEditingUi();
+}
+
 function syncUpdateFormEditingUi() {
   const submitButton = document.getElementById("updateSubmitButton");
   const cancelButton = document.getElementById("cancelUpdateEditBtn");
@@ -1960,6 +2057,9 @@ function renderShipmentsTable(shipments) {
           <td>${formatDate(shipment.last_update_time)}</td>
           <td>${shipment.progress}%</td>
           <td>
+            <button class="text-btn" type="button" data-edit-shipment="${escapeHtml(shipment.tracking_number)}">
+              ${t("editShipment")}
+            </button>
             <button class="text-btn" type="button" data-copy-tracking="${escapeHtml(shipment.tracking_number)}">
               ${t("copyTrackingLink")}
             </button>
@@ -2084,7 +2184,6 @@ async function saveShipmentFilesFromAdmin() {
   const password = document.getElementById("filesPasswordInput").value.trim();
   const input = document.getElementById("shipmentFilesInput");
   const files = Array.from(input.files || []);
-  const shouldOpenWhatsapp = Boolean(document.getElementById("sendFilesWhatsappCheckbox")?.checked);
 
   if (!trackingNumber || !files.length) {
     throw new Error("Missing files data");
@@ -2121,19 +2220,17 @@ async function saveShipmentFilesFromAdmin() {
     });
   }
 
-  if (shouldOpenWhatsapp) {
-    const whatsappMessage = buildShipmentFilesWhatsappMessage(
-      trackingNumber,
-      result.documents_password || password
-    );
-    renderShipmentFilesMessagePreview(whatsappMessage);
-    const whatsappUrl = buildCustomerFilesWhatsappLink(result.phone_number, whatsappMessage);
-    if (!whatsappUrl) {
-      result.whatsapp_warning = t("shipmentFilesWhatsappMissingPhone");
-    } else {
-      result.whatsapp_url = whatsappUrl;
-      result.whatsapp_ready = true;
-    }
+  const whatsappMessage = buildShipmentFilesWhatsappMessage(
+    trackingNumber,
+    result.documents_password || password
+  );
+  result.whatsapp_message = whatsappMessage;
+  const whatsappUrl = buildCustomerFilesWhatsappLink(result.phone_number, whatsappMessage);
+  if (!whatsappUrl) {
+    result.whatsapp_warning = t("shipmentFilesWhatsappMissingPhone");
+  } else {
+    result.whatsapp_url = whatsappUrl;
+    result.whatsapp_ready = true;
   }
 
   return result;
@@ -2217,6 +2314,10 @@ function setupAdminPage() {
     renderShipmentsTable(adminState.shipments);
   });
 
+  document.getElementById("cancelShipmentEditBtn")?.addEventListener("click", () => {
+    resetShipmentFormToCreateMode();
+  });
+
   document.getElementById("shipmentSelect")?.addEventListener("change", () => {
     clearAdminUpdateEditingState();
     syncSelectedShipmentNotes();
@@ -2248,7 +2349,6 @@ function setupAdminPage() {
   });
 
   document.getElementById("filesShipmentSelect")?.addEventListener("change", () => {
-    renderShipmentFilesWhatsappAction();
     loadAdminShipmentFiles();
   });
 
@@ -2270,6 +2370,7 @@ function setupAdminPage() {
 
     try {
       await deleteShipmentFileFromAdmin(deleteButton.dataset.deleteShipmentFile);
+      await loadAdminShipmentFiles();
       notify(t("deleteShipmentFileSuccess"));
     } catch (error) {
       notify(`${t("deleteShipmentFileError")} ${error.message}`);
@@ -2278,18 +2379,17 @@ function setupAdminPage() {
 
   document.getElementById("shipmentFilesForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    renderShipmentFilesWhatsappAction();
-    renderShipmentFilesMessagePreview();
     const submitButton = document.getElementById("saveShipmentFilesBtn");
     if (submitButton) {
       submitButton.disabled = true;
     }
     try {
       const result = await saveShipmentFilesFromAdmin();
-      event.target.reset();
       renderShipmentOptions(adminState.shipments);
       renderAdminShipmentFiles(result.files || []);
       renderShipmentFilesWhatsappAction(result.whatsapp_url);
+      renderShipmentFilesMessagePreview(result.whatsapp_message || "");
+      document.getElementById("shipmentFilesInput").value = "";
       const whatsappNote = result.whatsapp_warning || (result.whatsapp_ready ? ` ${t("shipmentFilesWhatsappReady")}` : "");
       setShipmentFilesUploadStatus(t("uploadComplete"));
       notify(`${t("shipmentFilesSaved")}${whatsappNote ? ` ${whatsappNote}` : ""}`);
@@ -2304,6 +2404,12 @@ function setupAdminPage() {
   });
 
   document.getElementById("shipmentsTableBody")?.addEventListener("click", (event) => {
+    const editTarget = event.target.closest("[data-edit-shipment]");
+    if (editTarget) {
+      startEditingShipment(editTarget.dataset.editShipment);
+      return;
+    }
+
     const copyTarget = event.target.closest("[data-copy-tracking]");
     if (copyTarget) {
       copyTrackingLink(copyTarget.dataset.copyTracking);
@@ -2320,30 +2426,49 @@ function setupAdminPage() {
     event.preventDefault();
     try {
       const createBilingualWhatsapp = document.getElementById("createBilingualWhatsappCheckbox").checked;
-      const createdShipment = await api("/api/shipments", {
-        method: "POST",
-        body: JSON.stringify({
-          tracking_number: normalizeLocalizedDigits(document.getElementById("trackingNumberInput").value).trim(),
-          phone_number: normalizeLocalizedDigits(document.getElementById("customerPhoneInput").value).trim(),
-          arabic_status: document.getElementById("arabicStatusInput").value,
-          english_status: document.getElementById("englishStatusInput").value,
-          update_timestamp: toIsoTimestampOrEmpty(document.getElementById("createUpdateTimestampInput").value),
-          preferred_language: document.getElementById("preferredLanguageInput").value,
-          delivery_date: normalizeLocalizedDigits(document.getElementById("deliveryDateInput").value).trim(),
-          progress: document.getElementById("createProgressInput").value
-        })
-      });
+      const isEditingShipment = Boolean(adminEditingShipmentTracking);
+      const payload = {
+        tracking_number: normalizeLocalizedDigits(document.getElementById("trackingNumberInput").value).trim(),
+        phone_number: normalizeLocalizedDigits(document.getElementById("customerPhoneInput").value).trim(),
+        arabic_status: document.getElementById("arabicStatusInput").value,
+        english_status: document.getElementById("englishStatusInput").value,
+        update_timestamp: toIsoTimestampOrEmpty(document.getElementById("createUpdateTimestampInput").value),
+        preferred_language: document.getElementById("preferredLanguageInput").value,
+        delivery_date: normalizeLocalizedDigits(document.getElementById("deliveryDateInput").value).trim(),
+        progress: document.getElementById("createProgressInput").value,
+        location: document.getElementById("createLocationInput").value,
+        internal_notes: document.getElementById("createInternalNotesInput").value
+      };
+      const createdShipment = isEditingShipment
+        ? await api(`/api/shipments/${encodeURIComponent(adminEditingShipmentTracking)}/details`, {
+            method: "PUT",
+            body: JSON.stringify(payload)
+          })
+        : await api("/api/shipments", {
+            method: "POST",
+            body: JSON.stringify(payload)
+          });
 
-      event.target.reset();
-      document.getElementById("preferredLanguageInput").value = "ar";
-      document.getElementById("createProgressInput").value = "25";
+      resetShipmentFormToCreateMode();
       await loadAdminData();
+      if (createdShipment?.tracking_number) {
+        const shipmentSelect = document.getElementById("shipmentSelect");
+        if (shipmentSelect && Array.from(shipmentSelect.options).some((option) => option.value === createdShipment.tracking_number)) {
+          shipmentSelect.value = createdShipment.tracking_number;
+          syncSelectedShipmentNotes();
+        }
+        const filesShipmentSelect = document.getElementById("filesShipmentSelect");
+        if (filesShipmentSelect && Array.from(filesShipmentSelect.options).some((option) => option.value === createdShipment.tracking_number)) {
+          filesShipmentSelect.value = createdShipment.tracking_number;
+          loadAdminShipmentFiles();
+        }
+      }
 
       const opened =
-        createdShipment && openCustomerUpdateWhatsapp(createdShipment, "create", createBilingualWhatsapp);
-      notify(`${t("addShipmentSuccess")}${opened ? ` ${t("whatsappOpened")}` : ""}`);
+        createdShipment && openCustomerUpdateWhatsapp(createdShipment, isEditingShipment ? "update" : "create", createBilingualWhatsapp);
+      notify(`${t(isEditingShipment ? "editShipmentSuccess" : "addShipmentSuccess")}${opened ? ` ${t("whatsappOpened")}` : ""}`);
     } catch (error) {
-      notify(`${t("addShipmentError")} ${error.message}`);
+      notify(`${t(adminEditingShipmentTracking ? "editShipmentError" : "addShipmentError")} ${error.message}`);
     }
   });
 

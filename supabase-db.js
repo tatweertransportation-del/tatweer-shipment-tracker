@@ -38,6 +38,13 @@ function normalizePhoneNumber(phoneNumber, defaultCountryCode) {
   return cleaned;
 }
 
+function hashDocumentsPassword(trackingNumber, password) {
+  return crypto
+    .createHash("sha256")
+    .update(`${String(trackingNumber || "").toUpperCase()}::${String(password || "")}`)
+    .digest("hex");
+}
+
 function createSupabaseDatabase(options) {
   const {
     dataFile,
@@ -341,7 +348,7 @@ function createSupabaseDatabase(options) {
           arabic_status: shipment.arabic_status,
           english_status: shipment.english_status,
           timestamp,
-          location: "",
+          location: String(payload.location || "").trim(),
           progress: initialProgress
         }
       ],
@@ -417,6 +424,94 @@ function createSupabaseDatabase(options) {
     });
 
     return getShipment(trackingNumber);
+  }
+
+  async function updateShipmentDetails(trackingNumber, payload) {
+    const current = await getShipment(trackingNumber);
+    if (!current) {
+      return null;
+    }
+
+    const nextTrackingNumber = String(payload.tracking_number || current.tracking_number).trim().toUpperCase();
+    const latestUpdate = current.history[current.history.length - 1] || null;
+    const currentFileAccess = await getShipmentFileAccess(current.tracking_number);
+    const nextTimestamp = payload.update_timestamp || current.last_update_time || new Date().toISOString();
+    const nextShipment = {
+      tracking_number: nextTrackingNumber,
+      phone_number: payload.phone_number
+        ? normalizePhoneNumber(payload.phone_number, defaultCountryCode)
+        : current.phone_number,
+      arabic_status: payload.arabic_status ? payload.arabic_status.trim() : current.arabic_status,
+      english_status: payload.english_status ? payload.english_status.trim() : current.english_status,
+      last_update_time: nextTimestamp,
+      delivery_date: payload.delivery_date || current.delivery_date,
+      preferred_language: payload.preferred_language === "en" ? "en" : current.preferred_language,
+      ...(supportsInternalNotes
+        ? { internal_notes: payload.internal_notes !== undefined ? String(payload.internal_notes || "").trim() : current.internal_notes || "" }
+        : {})
+    };
+
+    if (nextTrackingNumber !== current.tracking_number) {
+      await request("POST", "shipments", {
+        body: nextShipment,
+        prefer: "return=minimal"
+      });
+
+      for (const table of ["shipment_updates", "shipment_files", "shipment_ratings", "suggestions"]) {
+        await request("PATCH", table, {
+          query: { tracking_number: `eq.${current.tracking_number}` },
+          body: { tracking_number: nextTrackingNumber },
+          prefer: "return=minimal"
+        });
+      }
+
+      if (currentFileAccess) {
+        await request("PATCH", "shipment_file_access", {
+          query: { tracking_number: `eq.${current.tracking_number}` },
+          body: {
+            tracking_number: nextTrackingNumber,
+            password_hash: hashDocumentsPassword(nextTrackingNumber, currentFileAccess.password_value || ""),
+            updated_at: nextTimestamp
+          },
+          prefer: "return=minimal"
+        });
+      }
+
+      await request("DELETE", "shipments", {
+        query: { tracking_number: `eq.${current.tracking_number}` },
+        prefer: "return=minimal"
+      });
+    } else {
+      await request("PATCH", "shipments", {
+        query: { tracking_number: `eq.${trackingNumber}` },
+        body: nextShipment,
+        prefer: "return=minimal"
+      });
+    }
+
+    if (latestUpdate) {
+      await request("PATCH", "shipment_updates", {
+        query: {
+          tracking_number: `eq.${nextTrackingNumber}`,
+          id: `eq.${latestUpdate.id}`
+        },
+        body: {
+          arabic_status: nextShipment.arabic_status,
+          english_status: nextShipment.english_status,
+          timestamp: nextShipment.last_update_time,
+          location: payload.location !== undefined ? String(payload.location || "").trim() : latestUpdate.location || "",
+          progress: Number.isFinite(Number(payload.progress)) ? Number(payload.progress) : Number(latestUpdate.progress || 0)
+        },
+        prefer: "return=minimal"
+      });
+    }
+
+    appendAuditLog("shipment.details_edited", {
+      tracking_number: current.tracking_number,
+      next_tracking_number: nextTrackingNumber
+    });
+
+    return getShipment(nextTrackingNumber);
   }
 
   async function updateShipmentUpdate(trackingNumber, updateId, payload) {
@@ -799,6 +894,7 @@ function createSupabaseDatabase(options) {
     restoreBackup,
     createShipment,
     updateShipment,
+    updateShipmentDetails,
     updateShipmentUpdate,
     deleteShipmentUpdate,
     deleteShipment,
