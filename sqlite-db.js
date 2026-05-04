@@ -70,6 +70,7 @@ function createSqliteDatabase(options) {
 
     CREATE TABLE IF NOT EXISTS shipments (
       tracking_number TEXT PRIMARY KEY,
+      customer_name TEXT NOT NULL DEFAULT '',
       phone_number TEXT NOT NULL,
       arabic_status TEXT NOT NULL,
       english_status TEXT NOT NULL,
@@ -134,6 +135,9 @@ function createSqliteDatabase(options) {
   if (!shipmentColumns.some((column) => column.name === "internal_notes")) {
     db.exec("ALTER TABLE shipments ADD COLUMN internal_notes TEXT NOT NULL DEFAULT ''");
   }
+  if (!shipmentColumns.some((column) => column.name === "customer_name")) {
+    db.exec("ALTER TABLE shipments ADD COLUMN customer_name TEXT NOT NULL DEFAULT ''");
+  }
 
   const fileAccessColumns = db.prepare("PRAGMA table_info(shipment_file_access)").all();
   if (!fileAccessColumns.some((column) => column.name === "password_value")) {
@@ -161,6 +165,7 @@ function createSqliteDatabase(options) {
       const insertShipment = db.prepare(`
         INSERT INTO shipments (
           tracking_number,
+          customer_name,
           phone_number,
           arabic_status,
           english_status,
@@ -168,7 +173,7 @@ function createSqliteDatabase(options) {
           delivery_date,
           preferred_language,
           internal_notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       const insertUpdate = db.prepare(`
         INSERT INTO shipment_updates (
@@ -186,6 +191,7 @@ function createSqliteDatabase(options) {
         rows.forEach((shipment) => {
           insertShipment.run(
             shipment.tracking_number,
+            String(shipment.customer_name || "").trim(),
             normalizePhoneNumber(shipment.phone_number, defaultCountryCode),
             shipment.arabic_status,
             shipment.english_status,
@@ -259,6 +265,7 @@ function createSqliteDatabase(options) {
   const shipmentsQuery = db.prepare(`
     SELECT
       tracking_number,
+      customer_name,
       phone_number,
       arabic_status,
       english_status,
@@ -273,6 +280,7 @@ function createSqliteDatabase(options) {
   const shipmentQuery = db.prepare(`
     SELECT
       tracking_number,
+      customer_name,
       phone_number,
       arabic_status,
       english_status,
@@ -314,6 +322,7 @@ function createSqliteDatabase(options) {
 
     return {
       tracking_number: row.tracking_number,
+      customer_name: row.customer_name || "",
       phone_number: row.phone_number,
       arabic_status: row.arabic_status,
       english_status: row.english_status,
@@ -328,6 +337,7 @@ function createSqliteDatabase(options) {
   const insertShipment = db.prepare(`
     INSERT INTO shipments (
       tracking_number,
+      customer_name,
       phone_number,
       arabic_status,
       english_status,
@@ -335,7 +345,7 @@ function createSqliteDatabase(options) {
       delivery_date,
       preferred_language,
       internal_notes
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertUpdate = db.prepare(`
@@ -354,6 +364,7 @@ function createSqliteDatabase(options) {
     UPDATE shipments
     SET
       phone_number = ?,
+      customer_name = ?,
       arabic_status = ?,
       english_status = ?,
       last_update_time = ?,
@@ -506,6 +517,7 @@ function createSqliteDatabase(options) {
         shipments.forEach((shipment) => {
           insertShipment.run(
             shipment.tracking_number,
+            String(shipment.customer_name || ""),
             normalizePhoneNumber(shipment.phone_number, defaultCountryCode),
             String(shipment.arabic_status || ""),
             String(shipment.english_status || ""),
@@ -576,6 +588,7 @@ function createSqliteDatabase(options) {
       const shipment = {
         tracking_number: payload.tracking_number.trim().toUpperCase(),
         phone_number: normalizePhoneNumber(payload.phone_number, defaultCountryCode),
+        customer_name: String(payload.customer_name || "").trim(),
         arabic_status: payload.arabic_status.trim(),
         english_status: payload.english_status.trim(),
         last_update_time: timestamp,
@@ -612,6 +625,7 @@ function createSqliteDatabase(options) {
       runInTransaction(() => {
         insertShipment.run(
           shipment.tracking_number,
+          shipment.customer_name,
           shipment.phone_number,
           shipment.arabic_status,
           shipment.english_status,
@@ -655,6 +669,10 @@ function createSqliteDatabase(options) {
         phone_number: payload.phone_number
           ? normalizePhoneNumber(payload.phone_number, defaultCountryCode)
           : current.phone_number,
+        customer_name:
+          payload.customer_name !== undefined
+            ? String(payload.customer_name || "").trim()
+            : current.customer_name,
         delivery_date: payload.delivery_date || current.delivery_date,
         preferred_language: payload.preferred_language === "en" ? "en" : current.preferred_language,
         internal_notes:
@@ -684,6 +702,7 @@ function createSqliteDatabase(options) {
       runInTransaction(() => {
         updateShipmentStatement.run(
           nextShipment.phone_number,
+          nextShipment.customer_name,
           latestUpdate?.arabic_status || nextArabicStatus,
           latestUpdate?.english_status || nextEnglishStatus,
           latestUpdate?.timestamp || timestamp,
@@ -728,6 +747,10 @@ function createSqliteDatabase(options) {
         phone_number: payload.phone_number
           ? normalizePhoneNumber(payload.phone_number, defaultCountryCode)
           : current.phone_number,
+        customer_name:
+          payload.customer_name !== undefined
+            ? String(payload.customer_name || "").trim()
+            : current.customer_name,
         arabic_status: payload.arabic_status ? payload.arabic_status.trim() : current.arabic_status,
         english_status: payload.english_status ? payload.english_status.trim() : current.english_status,
         last_update_time: nextTimestamp,
@@ -743,6 +766,7 @@ function createSqliteDatabase(options) {
         if (nextTrackingNumber !== current.tracking_number) {
           insertShipment.run(
             nextShipment.tracking_number,
+            nextShipment.customer_name,
             nextShipment.phone_number,
             nextShipment.arabic_status,
             nextShipment.english_status,
@@ -767,8 +791,9 @@ function createSqliteDatabase(options) {
           deleteShipmentStatement.run(current.tracking_number);
         } else {
           updateShipmentStatement.run(
-            nextShipment.phone_number,
-            nextShipment.arabic_status,
+          nextShipment.phone_number,
+          nextShipment.customer_name,
+          nextShipment.arabic_status,
             nextShipment.english_status,
             nextShipment.last_update_time,
             nextShipment.delivery_date,
@@ -837,6 +862,7 @@ function createSqliteDatabase(options) {
 
         updateShipmentStatement.run(
           current.phone_number,
+          current.customer_name || "",
           latestUpdate?.arabic_status || current.arabic_status,
           latestUpdate?.english_status || current.english_status,
           latestUpdate?.timestamp || current.last_update_time,
@@ -892,6 +918,7 @@ function createSqliteDatabase(options) {
 
         updateShipmentStatement.run(
           current.phone_number,
+          current.customer_name || "",
           latestUpdate.arabic_status,
           latestUpdate.english_status,
           latestUpdate.timestamp,

@@ -171,6 +171,7 @@ const TRANSLATIONS = {
     shipmentManagement: "Shipment Management",
     createShipment: "Add New Shipment",
     trackingNumber: "Tracking Number",
+    customerName: "Customer Name",
     customerPhone: "Customer Phone Number",
     arabicStatus: "Arabic Status",
     englishStatus: "English Status",
@@ -194,7 +195,7 @@ const TRANSLATIONS = {
     saveUpdate: "Save Update",
     allShipments: "All Shipments",
     liveShipmentList: "Live Shipment List",
-    shipmentSearchPlaceholder: "Search by tracking number, phone, status, or notes",
+    shipmentSearchPlaceholder: "Search by tracking number, customer name, phone, status, or notes",
     currentStatus: "Current Status",
     progressHeader: "Progress",
     actions: "Actions",
@@ -418,6 +419,7 @@ const TRANSLATIONS = {
     shipmentManagement: "إدارة الشحنات",
     createShipment: "إضافة شحنة جديدة",
     trackingNumber: "رقم الشحنة",
+    customerName: "اسم العميل",
     customerPhone: "رقم هاتف العميل",
     arabicStatus: "الحالة بالعربية",
     englishStatus: "الحالة بالإنجليزية",
@@ -441,7 +443,7 @@ const TRANSLATIONS = {
     saveUpdate: "حفظ التحديث",
     allShipments: "كل الشحنات",
     liveShipmentList: "قائمة الشحنات المباشرة",
-    shipmentSearchPlaceholder: "ابحث برقم الشحنة أو الهاتف أو الحالة أو الملاحظات",
+    shipmentSearchPlaceholder: "ابحث برقم الشحنة أو اسم العميل أو الهاتف أو الحالة أو الملاحظات",
     currentStatus: "الحالة الحالية",
     progressHeader: "التقدم",
     actions: "إجراءات",
@@ -1855,6 +1857,7 @@ function startEditingShipment(trackingNumber) {
 
   adminEditingShipmentTracking = shipment.tracking_number;
   document.getElementById("trackingNumberInput").value = shipment.tracking_number || "";
+  document.getElementById("customerNameInput").value = shipment.customer_name || "";
   document.getElementById("customerPhoneInput").value = shipment.phone_number || "";
   document.getElementById("arabicStatusInput").value = shipment.arabic_status || "";
   document.getElementById("englishStatusInput").value = shipment.english_status || "";
@@ -2033,6 +2036,7 @@ function renderShipmentsTable(shipments) {
       if (!searchValue) return true;
         const searchable = [
           shipment.tracking_number,
+          shipment.customer_name,
           shipment.phone_number,
           shipment.arabic_status,
           shipment.english_status,
@@ -2050,6 +2054,7 @@ function renderShipmentsTable(shipments) {
       return `
         <tr>
           <td>${escapeHtml(shipment.tracking_number)}</td>
+          <td>${escapeHtml(shipment.customer_name || "--")}</td>
           <td>${escapeHtml(shipment.phone_number)}</td>
           <td>${escapeHtml(currentStatus)}</td>
           <td>${escapeHtml(shipment.internal_notes || "--")}</td>
@@ -2429,6 +2434,7 @@ function setupAdminPage() {
       const isEditingShipment = Boolean(adminEditingShipmentTracking);
       const payload = {
         tracking_number: normalizeLocalizedDigits(document.getElementById("trackingNumberInput").value).trim(),
+        customer_name: document.getElementById("customerNameInput").value.trim(),
         phone_number: normalizeLocalizedDigits(document.getElementById("customerPhoneInput").value).trim(),
         arabic_status: document.getElementById("arabicStatusInput").value,
         english_status: document.getElementById("englishStatusInput").value,

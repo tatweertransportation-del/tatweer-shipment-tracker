@@ -1,5 +1,6 @@
 create table if not exists public.shipments (
   tracking_number text primary key,
+  customer_name text not null default '',
   phone_number text not null,
   arabic_status text not null,
   english_status text not null,
@@ -11,6 +12,9 @@ create table if not exists public.shipments (
 
 alter table public.shipments
 add column if not exists internal_notes text not null default '';
+
+alter table public.shipments
+add column if not exists customer_name text not null default '';
 
 create table if not exists public.shipment_updates (
   id uuid primary key,

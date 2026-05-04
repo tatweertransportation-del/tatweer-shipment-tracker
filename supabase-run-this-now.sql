@@ -1,6 +1,9 @@
 alter table public.shipments
 add column if not exists internal_notes text not null default '';
 
+alter table public.shipments
+add column if not exists customer_name text not null default '';
+
 create table if not exists public.shipment_files (
   id uuid primary key,
   tracking_number text not null references public.shipments(tracking_number) on delete cascade,

@@ -1,4 +1,4 @@
-const http = require("http");
+﻿const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -284,7 +284,7 @@ function withDerivedFields(shipment, req) {
 }
 
 function toPublicShipment(shipment) {
-  const { internal_notes, ...publicShipment } = shipment;
+  const { internal_notes, customer_name, ...publicShipment } = shipment;
   return publicShipment;
 }
 
@@ -605,20 +605,20 @@ For your privacy, please keep this password confidential and do not share it wit
 Thank you for choosing Tatweer.`;
   }
 
-  return `تطوير للخدمات اللوجستية
+  return `ØªØ·ÙˆÙŠØ± Ù„Ù„Ø®Ø¯Ù…Ø§Øª Ø§Ù„Ù„ÙˆØ¬Ø³ØªÙŠØ©
 
-عزيزنا العميل،
-تم رفع أوراق شحنتكم بنجاح، وأصبحت متاحة الآن بشكل آمن من خلال بوابة التتبع.
+Ø¹Ø²ÙŠØ²Ù†Ø§ Ø§Ù„Ø¹Ù…ÙŠÙ„ØŒ
+ØªÙ… Ø±ÙØ¹ Ø£ÙˆØ±Ø§Ù‚ Ø´Ø­Ù†ØªÙƒÙ… Ø¨Ù†Ø¬Ø§Ø­ØŒ ÙˆØ£ØµØ¨Ø­Øª Ù…ØªØ§Ø­Ø© Ø§Ù„Ø¢Ù† Ø¨Ø´ÙƒÙ„ Ø¢Ù…Ù† Ù…Ù† Ø®Ù„Ø§Ù„ Ø¨ÙˆØ§Ø¨Ø© Ø§Ù„ØªØªØ¨Ø¹.
 
-رقم الشحنة: ${trackingNumber}
-كلمة مرور أوراق الشحنة: ${password}
+Ø±Ù‚Ù… Ø§Ù„Ø´Ø­Ù†Ø©: ${trackingNumber}
+ÙƒÙ„Ù…Ø© Ù…Ø±ÙˆØ± Ø£ÙˆØ±Ø§Ù‚ Ø§Ù„Ø´Ø­Ù†Ø©: ${password}
 
-لعرض أوراق الشحنة، يرجى فتح الرابط التالي:
+Ù„Ø¹Ø±Ø¶ Ø£ÙˆØ±Ø§Ù‚ Ø§Ù„Ø´Ø­Ù†Ø©ØŒ ÙŠØ±Ø¬Ù‰ ÙØªØ­ Ø§Ù„Ø±Ø§Ø¨Ø· Ø§Ù„ØªØ§Ù„ÙŠ:
 ${documentsLink}
 
-حرصًا على خصوصيتكم، يرجى الاحتفاظ بكلمة المرور وعدم مشاركتها إلا مع الأشخاص المصرح لهم.
+Ø­Ø±ØµÙ‹Ø§ Ø¹Ù„Ù‰ Ø®ØµÙˆØµÙŠØªÙƒÙ…ØŒ ÙŠØ±Ø¬Ù‰ Ø§Ù„Ø§Ø­ØªÙØ§Ø¸ Ø¨ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± ÙˆØ¹Ø¯Ù… Ù…Ø´Ø§Ø±ÙƒØªÙ‡Ø§ Ø¥Ù„Ø§ Ù…Ø¹ Ø§Ù„Ø£Ø´Ø®Ø§Øµ Ø§Ù„Ù…ØµØ±Ø­ Ù„Ù‡Ù….
 
-نشكر ثقتكم في تطوير.`;
+Ù†Ø´ÙƒØ± Ø«Ù‚ØªÙƒÙ… ÙÙŠ ØªØ·ÙˆÙŠØ±.`;
 }
 
 function buildCleanShipmentFilesWhatsappMessage(trackingNumber, password, req, language = "ar") {
@@ -640,20 +640,20 @@ For your privacy, please keep this password confidential and do not share it wit
 Thank you for choosing Tatweer.`;
   }
 
-  return `Tatweer Logistics Services - تطوير للخدمات اللوجستية
+  return `Tatweer Logistics Services - ØªØ·ÙˆÙŠØ± Ù„Ù„Ø®Ø¯Ù…Ø§Øª Ø§Ù„Ù„ÙˆØ¬Ø³ØªÙŠØ©
 
-عزيزنا العميل،
-تم رفع أوراق شحنتكم بنجاح، وأصبحت متاحة الآن بشكل آمن من خلال بوابة التتبع الخاصة بتطوير.
+Ø¹Ø²ÙŠØ²Ù†Ø§ Ø§Ù„Ø¹Ù…ÙŠÙ„ØŒ
+ØªÙ… Ø±ÙØ¹ Ø£ÙˆØ±Ø§Ù‚ Ø´Ø­Ù†ØªÙƒÙ… Ø¨Ù†Ø¬Ø§Ø­ØŒ ÙˆØ£ØµØ¨Ø­Øª Ù…ØªØ§Ø­Ø© Ø§Ù„Ø¢Ù† Ø¨Ø´ÙƒÙ„ Ø¢Ù…Ù† Ù…Ù† Ø®Ù„Ø§Ù„ Ø¨ÙˆØ§Ø¨Ø© Ø§Ù„ØªØªØ¨Ø¹ Ø§Ù„Ø®Ø§ØµØ© Ø¨ØªØ·ÙˆÙŠØ±.
 
-رقم الشحنة: ${trackingNumber}
-كلمة مرور أوراق الشحنة: ${password}
+Ø±Ù‚Ù… Ø§Ù„Ø´Ø­Ù†Ø©: ${trackingNumber}
+ÙƒÙ„Ù…Ø© Ù…Ø±ÙˆØ± Ø£ÙˆØ±Ø§Ù‚ Ø§Ù„Ø´Ø­Ù†Ø©: ${password}
 
-لعرض أو تحميل أوراق الشحنة، يرجى فتح الرابط التالي:
+Ù„Ø¹Ø±Ø¶ Ø£Ùˆ ØªØ­Ù…ÙŠÙ„ Ø£ÙˆØ±Ø§Ù‚ Ø§Ù„Ø´Ø­Ù†Ø©ØŒ ÙŠØ±Ø¬Ù‰ ÙØªØ­ Ø§Ù„Ø±Ø§Ø¨Ø· Ø§Ù„ØªØ§Ù„ÙŠ:
 ${documentsLink}
 
-حفاظًا على خصوصيتكم، يرجى الاحتفاظ بكلمة المرور وعدم مشاركتها إلا مع الأشخاص المصرح لهم.
+Ø­ÙØ§Ø¸Ù‹Ø§ Ø¹Ù„Ù‰ Ø®ØµÙˆØµÙŠØªÙƒÙ…ØŒ ÙŠØ±Ø¬Ù‰ Ø§Ù„Ø§Ø­ØªÙØ§Ø¸ Ø¨ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± ÙˆØ¹Ø¯Ù… Ù…Ø´Ø§Ø±ÙƒØªÙ‡Ø§ Ø¥Ù„Ø§ Ù…Ø¹ Ø§Ù„Ø£Ø´Ø®Ø§Øµ Ø§Ù„Ù…ØµØ±Ø­ Ù„Ù‡Ù….
 
-نشكركم على ثقتكم في تطوير.`;
+Ù†Ø´ÙƒØ±ÙƒÙ… Ø¹Ù„Ù‰ Ø«Ù‚ØªÙƒÙ… ÙÙŠ ØªØ·ÙˆÙŠØ±.`;
 }
 
 function buildCleanShipmentFilesWhatsappMessage(trackingNumber, password, req, language = "ar") {
@@ -727,24 +727,24 @@ Thank you for choosing Tatweer Logistics Services.`;
   }
 
   const passwordLine = hasNewPassword
-    ? `كلمة مرور الأوراق: ${password}`
-    : "كلمة مرور الأوراق: يرجى استخدام نفس كلمة المرور المرسلة لكم سابقًا.";
+    ? `ÙƒÙ„Ù…Ø© Ù…Ø±ÙˆØ± Ø§Ù„Ø£ÙˆØ±Ø§Ù‚: ${password}`
+    : "ÙƒÙ„Ù…Ø© Ù…Ø±ÙˆØ± Ø§Ù„Ø£ÙˆØ±Ø§Ù‚: ÙŠØ±Ø¬Ù‰ Ø§Ø³ØªØ®Ø¯Ø§Ù… Ù†ÙØ³ ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± Ø§Ù„Ù…Ø±Ø³Ù„Ø© Ù„ÙƒÙ… Ø³Ø§Ø¨Ù‚Ù‹Ø§.";
 
-  return `تطوير للخدمات اللوجستية
+  return `ØªØ·ÙˆÙŠØ± Ù„Ù„Ø®Ø¯Ù…Ø§Øª Ø§Ù„Ù„ÙˆØ¬Ø³ØªÙŠØ©
 
-عزيزنا العميل،
+Ø¹Ø²ÙŠØ²Ù†Ø§ Ø§Ù„Ø¹Ù…ÙŠÙ„ØŒ
 
-نود إبلاغكم بأن أوراق الشحنة أصبحت متاحة الآن على نظام Tatweer Tracking System.
+Ù†ÙˆØ¯ Ø¥Ø¨Ù„Ø§ØºÙƒÙ… Ø¨Ø£Ù† Ø£ÙˆØ±Ø§Ù‚ Ø§Ù„Ø´Ø­Ù†Ø© Ø£ØµØ¨Ø­Øª Ù…ØªØ§Ø­Ø© Ø§Ù„Ø¢Ù† Ø¹Ù„Ù‰ Ù†Ø¸Ø§Ù… Tatweer Tracking System.
 
-رقم الشحنة: ${trackingNumber}
+Ø±Ù‚Ù… Ø§Ù„Ø´Ø­Ù†Ø©: ${trackingNumber}
 ${passwordLine}
 
-يمكنكم عرض أو تحميل أوراق الشحنة بأمان من خلال الرابط التالي:
+ÙŠÙ…ÙƒÙ†ÙƒÙ… Ø¹Ø±Ø¶ Ø£Ùˆ ØªØ­Ù…ÙŠÙ„ Ø£ÙˆØ±Ø§Ù‚ Ø§Ù„Ø´Ø­Ù†Ø© Ø¨Ø£Ù…Ø§Ù† Ù…Ù† Ø®Ù„Ø§Ù„ Ø§Ù„Ø±Ø§Ø¨Ø· Ø§Ù„ØªØ§Ù„ÙŠ:
 ${documentsLink}
 
-يرجى الاحتفاظ بكلمة المرور وعدم مشاركتها حفاظًا على سرية بيانات شحنتكم.
+ÙŠØ±Ø¬Ù‰ Ø§Ù„Ø§Ø­ØªÙØ§Ø¸ Ø¨ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± ÙˆØ¹Ø¯Ù… Ù…Ø´Ø§Ø±ÙƒØªÙ‡Ø§ Ø­ÙØ§Ø¸Ù‹Ø§ Ø¹Ù„Ù‰ Ø³Ø±ÙŠØ© Ø¨ÙŠØ§Ù†Ø§Øª Ø´Ø­Ù†ØªÙƒÙ….
 
-شكرًا لاختياركم تطوير للخدمات اللوجستية.`;
+Ø´ÙƒØ±Ù‹Ø§ Ù„Ø§Ø®ØªÙŠØ§Ø±ÙƒÙ… ØªØ·ÙˆÙŠØ± Ù„Ù„Ø®Ø¯Ù…Ø§Øª Ø§Ù„Ù„ÙˆØ¬Ø³ØªÙŠØ©.`;
 }
 
 function buildShipmentDocumentsWhatsappMessage(trackingNumber, password, req, language = "ar") {
@@ -908,9 +908,9 @@ function isValidTimestamp(value) {
 }
 
 function normalizeLocalizedDigits(value) {
-  return String(value || "").replace(/[٠-٩۰-۹]/g, (digit) => {
-    const arabicIndicDigits = "٠١٢٣٤٥٦٧٨٩";
-    const easternArabicIndicDigits = "۰۱۲۳۴۵۶۷۸۹";
+  return String(value || "").replace(/[Ù -Ù©Û°-Û¹]/g, (digit) => {
+    const arabicIndicDigits = "Ù Ù¡Ù¢Ù£Ù¤Ù¥Ù¦Ù§Ù¨Ù©";
+    const easternArabicIndicDigits = "Û°Û±Û²Û³Û´ÛµÛ¶Û·Û¸Û¹";
     const arabicIndicIndex = arabicIndicDigits.indexOf(digit);
     if (arabicIndicIndex !== -1) {
       return String(arabicIndicIndex);
@@ -984,6 +984,7 @@ function getExportLabels(language) {
       updatesSheet: "تفاصيل التحديثات",
       shipmentsHeaders: [
         "رقم الشحنة",
+        "اسم العميل",
         "هاتف العميل",
         "الحالة بالعربية",
         "الحالة بالإنجليزية",
@@ -996,6 +997,7 @@ function getExportLabels(language) {
       ],
       updatesHeaders: [
         "رقم الشحنة",
+        "اسم العميل",
         "هاتف العميل",
         "التاريخ",
         "الحالة بالعربية",
@@ -1014,6 +1016,7 @@ function getExportLabels(language) {
     updatesSheet: "Updates",
     shipmentsHeaders: [
       "Tracking Number",
+      "Customer Name",
       "Customer Phone",
       "Arabic Status",
       "English Status",
@@ -1026,6 +1029,7 @@ function getExportLabels(language) {
     ],
     updatesHeaders: [
       "Tracking Number",
+      "Customer Name",
       "Customer Phone",
       "Date",
       "Arabic Status",
@@ -1084,6 +1088,7 @@ function buildShipmentsWorkbookXml(shipments, language) {
   const labels = getExportLabels(language);
   const shipmentRows = shipments.map((shipment) => [
     shipment.tracking_number,
+    shipment.customer_name || "",
     shipment.phone_number,
     shipment.arabic_status,
     shipment.english_status,
@@ -1098,6 +1103,7 @@ function buildShipmentsWorkbookXml(shipments, language) {
   const updateRows = shipments.flatMap((shipment) =>
     (shipment.history || []).map((update) => [
       shipment.tracking_number,
+      shipment.customer_name || "",
       shipment.phone_number,
       update.timestamp,
       update.arabic_status,
@@ -1607,6 +1613,7 @@ const server = http.createServer(async (req, res) => {
       const requestBody = await readRequestBody(req);
       const {
         tracking_number,
+        customer_name,
         phone_number,
         arabic_status,
         english_status,
@@ -1619,6 +1626,7 @@ const server = http.createServer(async (req, res) => {
       } = requestBody;
 
       const normalizedTrackingNumber = normalizeTrackingNumber(tracking_number);
+      const normalizedCustomerName = sanitizeText(customer_name, 120);
       const normalizedPhoneNumber = sanitizePhoneNumber(phone_number);
       const normalizedArabicStatus = sanitizeText(arabic_status, 160);
       const normalizedEnglishStatus = sanitizeText(english_status, 160);
@@ -1664,6 +1672,7 @@ const server = http.createServer(async (req, res) => {
 
       const shipment = await database.createShipment({
         tracking_number: normalizedTrackingNumber,
+        customer_name: normalizedCustomerName,
         phone_number: normalizedPhoneNumber,
         arabic_status: normalizedArabicStatus,
         english_status: normalizedEnglishStatus,
@@ -1694,6 +1703,7 @@ const server = http.createServer(async (req, res) => {
       const requestBody = await readRequestBody(req);
       const {
         tracking_number,
+        customer_name,
         phone_number,
         arabic_status,
         english_status,
@@ -1736,6 +1746,7 @@ const server = http.createServer(async (req, res) => {
 
       const shipment = await database.updateShipmentDetails(trackingNumber, {
         tracking_number: normalizedTrackingNumber,
+        customer_name: sanitizeText(customer_name, 120),
         phone_number: normalizedPhoneNumber,
         arabic_status: sanitizeText(arabic_status, 160),
         english_status: sanitizeText(english_status, 160),
@@ -1968,3 +1979,4 @@ server.listen(PORT, () => {
   console.log(`Public tracking links: ${TRACKING_BASE_URL || "auto-detected from the request host"}`);
   console.log(`Database file: ${DATABASE_FILE}`);
 });
+

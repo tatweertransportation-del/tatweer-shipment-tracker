@@ -59,6 +59,7 @@ function createSupabaseDatabase(options) {
     process.env.SUPABASE_SERVICE_KEY ||
     "";
   let supportsInternalNotes = true;
+  let supportsCustomerName = true;
 
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error("Supabase environment variables are missing.");
@@ -140,6 +141,7 @@ function createSupabaseDatabase(options) {
       if (shipments.length) {
         const shipmentBodies = shipments.map((shipment) => ({
           tracking_number: shipment.tracking_number,
+          customer_name: String(shipment.customer_name || "").trim(),
           phone_number: normalizePhoneNumber(shipment.phone_number, defaultCountryCode),
           arabic_status: shipment.arabic_status,
           english_status: shipment.english_status,
@@ -225,7 +227,8 @@ function createSupabaseDatabase(options) {
     await bootstrapIfEmpty();
     const shipmentSelect =
       "tracking_number,phone_number,arabic_status,english_status,last_update_time,delivery_date,preferred_language" +
-      (supportsInternalNotes ? ",internal_notes" : "");
+      (supportsInternalNotes ? ",internal_notes" : "") +
+      (supportsCustomerName ? ",customer_name" : "");
     const [shipments, updatesMap] = await Promise.all([
       request("GET", "shipments", {
         query: {
@@ -238,7 +241,19 @@ function createSupabaseDatabase(options) {
           return request("GET", "shipments", {
             query: {
               select:
-                "tracking_number,phone_number,arabic_status,english_status,last_update_time,delivery_date,preferred_language",
+                "tracking_number,phone_number,arabic_status,english_status,last_update_time,delivery_date,preferred_language" +
+                (supportsCustomerName ? ",customer_name" : ""),
+              order: "last_update_time.desc"
+            }
+          });
+        }
+        if (supportsCustomerName && String(error.message || "").includes("customer_name")) {
+          supportsCustomerName = false;
+          return request("GET", "shipments", {
+            query: {
+              select:
+                "tracking_number,phone_number,arabic_status,english_status,last_update_time,delivery_date,preferred_language" +
+                (supportsInternalNotes ? ",internal_notes" : ""),
               order: "last_update_time.desc"
             }
           });
@@ -250,6 +265,7 @@ function createSupabaseDatabase(options) {
 
     return shipments.map((shipment) => ({
       ...shipment,
+      customer_name: shipment.customer_name || "",
       internal_notes: shipment.internal_notes || "",
       preferred_language: shipment.preferred_language === "en" ? "en" : "ar",
       history: updatesMap.get(shipment.tracking_number) || []
@@ -260,7 +276,8 @@ function createSupabaseDatabase(options) {
     await bootstrapIfEmpty();
     const shipmentSelect =
       "tracking_number,phone_number,arabic_status,english_status,last_update_time,delivery_date,preferred_language" +
-      (supportsInternalNotes ? ",internal_notes" : "");
+      (supportsInternalNotes ? ",internal_notes" : "") +
+      (supportsCustomerName ? ",customer_name" : "");
     const rows = await request("GET", "shipments", {
       query: {
         select: shipmentSelect,
@@ -273,7 +290,20 @@ function createSupabaseDatabase(options) {
         return request("GET", "shipments", {
           query: {
             select:
-              "tracking_number,phone_number,arabic_status,english_status,last_update_time,delivery_date,preferred_language",
+              "tracking_number,phone_number,arabic_status,english_status,last_update_time,delivery_date,preferred_language" +
+              (supportsCustomerName ? ",customer_name" : ""),
+            tracking_number: `eq.${trackingNumber}`,
+            limit: "1"
+          }
+        });
+      }
+      if (supportsCustomerName && String(error.message || "").includes("customer_name")) {
+        supportsCustomerName = false;
+        return request("GET", "shipments", {
+          query: {
+            select:
+              "tracking_number,phone_number,arabic_status,english_status,last_update_time,delivery_date,preferred_language" +
+              (supportsInternalNotes ? ",internal_notes" : ""),
             tracking_number: `eq.${trackingNumber}`,
             limit: "1"
           }
@@ -297,6 +327,7 @@ function createSupabaseDatabase(options) {
 
     return {
       ...shipment,
+      customer_name: shipment.customer_name || "",
       internal_notes: shipment.internal_notes || "",
       preferred_language: shipment.preferred_language === "en" ? "en" : "ar",
       history: updates.map((row) => ({
@@ -314,6 +345,7 @@ function createSupabaseDatabase(options) {
     const timestamp = payload.update_timestamp || new Date().toISOString();
     const shipment = {
       tracking_number: payload.tracking_number.trim().toUpperCase(),
+      customer_name: String(payload.customer_name || "").trim(),
       phone_number: normalizePhoneNumber(payload.phone_number, defaultCountryCode),
       arabic_status: payload.arabic_status.trim(),
       english_status: payload.english_status.trim(),
@@ -394,6 +426,9 @@ function createSupabaseDatabase(options) {
       phone_number: payload.phone_number
         ? normalizePhoneNumber(payload.phone_number, defaultCountryCode)
         : current.phone_number,
+      ...(supportsCustomerName && payload.customer_name !== undefined
+        ? { customer_name: String(payload.customer_name || "").trim() }
+        : {}),
       arabic_status: latestUpdate?.arabic_status || nextArabicStatus,
       english_status: latestUpdate?.english_status || nextEnglishStatus,
       last_update_time: latestUpdate?.timestamp || timestamp,
@@ -438,6 +473,9 @@ function createSupabaseDatabase(options) {
     const nextTimestamp = payload.update_timestamp || current.last_update_time || new Date().toISOString();
     const nextShipment = {
       tracking_number: nextTrackingNumber,
+      ...(supportsCustomerName
+        ? { customer_name: payload.customer_name !== undefined ? String(payload.customer_name || "").trim() : current.customer_name || "" }
+        : {}),
       phone_number: payload.phone_number
         ? normalizePhoneNumber(payload.phone_number, defaultCountryCode)
         : current.phone_number,
@@ -744,6 +782,7 @@ function createSupabaseDatabase(options) {
       await request("POST", "shipments", {
         body: shipments.map((shipment) => ({
           tracking_number: shipment.tracking_number,
+          customer_name: String(shipment.customer_name || ""),
           phone_number: normalizePhoneNumber(shipment.phone_number, defaultCountryCode),
           arabic_status: String(shipment.arabic_status || ""),
           english_status: String(shipment.english_status || ""),
